@@ -76,7 +76,7 @@ class Session {
   }
 
   typeOfSeq(seq: number): string {
-    return this.events.find((e) => e.seq === seq)!.type
+    return this.events[seq].type // seq 即事件下标，直接索引
   }
 
   deriveMessages(seqs: number[] = this.surface): ChatCompletionMessageParam[] {

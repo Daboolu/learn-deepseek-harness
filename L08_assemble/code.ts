@@ -72,7 +72,7 @@ class Session {
     return event
   }
   typeOfSeq(seq: number): string {
-    return this.events.find((e) => e.seq === seq)!.type
+    return this.events[seq].type // seq 即事件下标，直接索引
   }
   deriveMessages(seqs: number[] = this.surface): ChatCompletionMessageParam[] {
     // seq 等于事件在 events 中的下标（events 只增，seq 与 push 同步自增），故可直接索引

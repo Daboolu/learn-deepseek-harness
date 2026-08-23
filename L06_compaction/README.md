@@ -14,8 +14,10 @@
 
 ```
 压缩前 surface: [u1, a2, u3, a4, u5, a6, u7, a8, u9, a10]   （太长）
-                └──────── 压缩这段 ────────┘ └─ 保留 ─┘
-压缩后 surface: [S,  u9, a10]     S = 一条 <compacted-summary> 摘要
+压缩后 surface: [S, u9, a10]
+
+  u1…a8    → 压缩为一条摘要 S（<compacted-summary>）
+  u9, a10  → 原样保留（最近一段）
 ```
 
 ## 三根支柱如何同时发挥作用
@@ -47,7 +49,7 @@ compact/end          (log-only)
 
 ```ts
 const messages = [{ role: "system", content: SYSTEM }, ...rangeMsgs, { role: "user", content: COMPACT_INSTRUCTION }]
-//                └──────────── 复用对话请求的前缀 ────────────┘  └── 指令放末尾 ──┘
+// 前半 [system + ...rangeMsgs] = 复用对话请求的前缀（命中缓存）；末尾那条 user 消息 = 压缩指令
 ```
 
 ## 边界处理

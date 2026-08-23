@@ -14,8 +14,10 @@ As the conversation grows, it needs compaction: replace an older span with a sin
 
 ```
 before  surface: [u1, a2, u3, a4, u5, a6, u7, a8, u9, a10]   (too long)
-                  └────── compact this span ──────┘ └ keep ┘
-after   surface: [S,  u9, a10]     S = one <compacted-summary> message
+after   surface: [S, u9, a10]
+
+  u1…a8    → compacted into one summary S (<compacted-summary>)
+  u9, a10  → kept as-is (the recent tail)
 ```
 
 ## How the three pillars work together
@@ -47,7 +49,7 @@ The replaced original events remain in `events[]` — inspect via `/log`. This i
 
 ```ts
 const messages = [{ role: "system", content: SYSTEM }, ...rangeMsgs, { role: "user", content: COMPACT_INSTRUCTION }]
-//                └──────────── reuse the conversation request's prefix ────────────┘  └── instruction at the end ──┘
+// first part [system + ...rangeMsgs] = the conversation request's prefix (cache hit); the trailing user message = the compaction instruction
 ```
 
 ## Boundary handling
