@@ -1,18 +1,4 @@
-/**
- * L7 · 跨 session 记忆 (P2 + P3)
- *
- * 前几课的对话都随进程结束而消失。这一课让 agent 具备跨会话记忆：
- *   写入：模型可调用 remember 工具，把关于用户/项目的事实存入磁盘文件
- *   召回：新会话开始时，读回这些事实并注入对话
- *
- * 支柱关联：
- *   P2 记忆写入是一次持久化追加（与事件日志同理：只增）；召回把事实作为一条事件进入 surface
- *   P3 召回的事实作为较早且稳定的一条注入一次，保持前缀稳定、缓存友好；
- *      若改为每轮按相关性重排注入不同内容，则会改变较早的前缀、破坏缓存——这正是需要
- *      位置无关缓存(PIC)的场景
- *
- * 为聚焦记忆，本课保留 bash 工具，未叠加压缩等插件。
- */
+// L7
 
 import OpenAI from "openai"
 import type { ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/chat/completions"

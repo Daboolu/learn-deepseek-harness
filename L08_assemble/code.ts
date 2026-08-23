@@ -1,12 +1,4 @@
-/**
- * L8 · 组装成小 harness (三支柱合力)
- *
- * 前面各课分别做出了插件：工具管线与权限(L5)、压缩(L6)、记忆(L7)、上下文注入(L4)。
- * 这一课把它们组装到一起，得到一个完整可用的小 harness。
- *
- * 全课的收束点在文件末尾的「组装」段——新增任意能力只需加一行，循环与其它插件都不动。
- * 这就是「一切皆插件」的复利：能力正交、可自由增删。
- */
+// L8
 
 import OpenAI from "openai"
 import type { ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/chat/completions"

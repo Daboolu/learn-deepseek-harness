@@ -1,16 +1,4 @@
-/**
- * L4 · 对 KV Cache 敏感 (支柱 P3)
- *
- * 服务端前缀缓存的规则：从首个 token 起逐字节一致的前缀才能命中、免于重算；
- * 一旦某位置改变，其后全部失效。
- *
- * 由此得出上下文注入的纪律：一律追加到末尾(append-only)，不修改中间。
- *
- * 本课：
- *   1) 接入第一个上下文注入插件（在 agent/pre-step 向请求注入「当前时间」）
- *   2) 打印 DeepSeek 返回的缓存命中 token 数
- *   3) 用 /append 与 /prepend 对比同一注入放在末尾与开头对缓存命中的影响
- */
+// L4
 
 import OpenAI from "openai"
 import type { ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/chat/completions"

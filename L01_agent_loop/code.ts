@@ -1,17 +1,4 @@
-/**
- * L1 · 最裸的循环
- *
- * 一个 AI coding agent 的核心：把工具结果反复喂回给模型，直到模型不再请求工具。
- *
- *     用户提问 ──> 模型 ──> 请求工具? ──是──> 执行工具 ──> 结果写回对话
- *                   ^                                            |
- *                   └────────────────────────────────────────────┘
- *
- * 这一课刻意从简，留下三处局限；后面三根支柱(L2 插件 / L3 事件日志 / L4 KV缓存)逐一解决：
- *   ❶ 能力与循环耦合：bash 直接写在循环旁    → L2 拆成插件
- *   ❷ 对话是可变数组 history，可被任意修改   → L3 换成 append-only 事件日志
- *   ❸ 每步都重发整个 history                 → L4 从 KV 缓存角度审视
- */
+// L1
 
 import OpenAI from "openai"
 import type { ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/chat/completions"

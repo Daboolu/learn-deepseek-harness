@@ -1,16 +1,4 @@
-/**
- * L5 · 工具管线 + 权限 (P1 + P2)
- *
- * 前几课工具执行是一次直接的函数调用。真实 harness 把它升级为一条分层管线，
- * 让权限、审计、结果改写各自作为独立环节接入：
- *
- *   pre-execute(瀑布: 允许/拒绝/询问) → guard(单调否决) → 执行 → post-execute(瀑布: 改写结果) → result(通知)
- *
- * 每一环都是一个扩展点，分别承载安全策略(权限)、不可绕过的硬规则(guard)、结果加工、观察。
- * 本课新增 read_file 作为第二个工具，并接入一个 permission 插件，对写/删类命令要求用户确认。
- *
- * 为聚焦管线，本课未叠加 L4 的上下文注入等插件；L8 会将各能力组装到一起。
- */
+// L5
 
 import OpenAI from "openai"
 import type { ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/chat/completions"

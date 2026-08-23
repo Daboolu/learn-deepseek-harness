@@ -1,14 +1,4 @@
-/**
- * L9 · 子 agent (P1)
- *
- * 把「派生一个带独立上下文的子循环」做成一个工具：spawn_subagent(task)。
- * 子 agent 有自己独立的 Session，完成任务后只把最终结果回传给父 agent。
- *
- * 关键价值是上下文隔离：子 agent 探索过程中的大量工具调用与中间输出留在它自己的
- * Session 里，不进入父 agent 的上下文。父 agent 只收到一段结论，上下文因而保持精简
- * （也利于缓存与成本，呼应 P3）。子 agent 本身就是同一套循环——「一切皆插件」下，
- * 它只是又一个被工具触发的循环实例。
- */
+// L9
 
 import OpenAI from "openai"
 import type { ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/chat/completions"

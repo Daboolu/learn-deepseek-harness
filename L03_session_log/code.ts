@@ -1,16 +1,4 @@
-/**
- * L3 · Session Log 是唯一真相 (支柱 P2)
- *
- * 解决 L1 局限 ❷：对话是可变数组，可被任意修改、进程结束即丢失、无法确定性重放。
- * 做法：用一条 append-only 事件日志承载对话，模型看到的消息由日志派生。
- *
- *   • 事件日志 events[]：记录全部事件——用户消息、模型回复、工具结果，以及 turn 边界。仅追加，不修改。
- *   • surface：日志中「进入对话」的事件子集，是一个有序的 seq 列表。turn 边界这类事件不进入 surface。
- *
- * deriveMessages() 按 surface 列出的 seq 依次取出对应事件、投影为模型消息。
- * 这一分离是后续能力的地基：压缩(L6)只需追加一条 replace 事件改写 surface，原始日志不删；
- * 崩溃恢复只需重放日志即可精确重建。
- */
+// L3
 
 import OpenAI from "openai"
 import type { ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/chat/completions"

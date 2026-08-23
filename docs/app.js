@@ -22,7 +22,7 @@ const I18N = {
     copy: "Copy run command", copied: "Copied ✓", codeHint: "Lesson code. Run locally: ",
     diffTitle: "Code Diff",
     stat: (a, b, add, del) => `${a} → ${b}: <b class="add">+${add}</b> / <b class="del">-${del}</b> lines`,
-    lessonLabel: (l) => `L${l.num}`,
+    lessonLabel: (l) => l.title_en || `L${l.num}`,
     readmeTodo: "🚧 English version — TODO",
     langBtn: "中", // 点击切到中文
   },
@@ -138,8 +138,9 @@ function renderMain() {
 }
 
 function renderReadme(main, lesson) {
-  if (state.lang === "en") {
-    // 英文内容暂缺，占位 TODO
+  // 按语言选择 README 源；英文缺失时回落到 TODO 占位
+  const md = state.lang === "en" ? lesson.readme_en : lesson.readme
+  if (!md) {
     const box = document.createElement("div")
     box.className = "todo-box"
     box.textContent = t("readmeTodo")
@@ -147,7 +148,7 @@ function renderReadme(main, lesson) {
     return
   }
   const div = document.createElement("div")
-  div.innerHTML = marked.parse(lesson.readme)
+  div.innerHTML = marked.parse(md)
   main.appendChild(div)
   div.querySelectorAll("pre code").forEach((el) => hljs.highlightElement(el))
 }

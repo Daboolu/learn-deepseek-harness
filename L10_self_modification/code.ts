@@ -1,18 +1,4 @@
-/**
- * L10 · 自我修改 (P1 的终极形态)
- *
- * 让模型在运行时编写一个新工具并挂载进当前运行的 agent，随即就能调用它。
- * 这是「一切皆插件」的终点：连"扩展自己"本身也是一个工具。
- *
- * 之所以成立，靠两点：
- *   · 工具清单在每一步都从注册表重新生成——运行时新增的工具下一步即对模型可见
- *   · 注册表允许随时 register——新增无需重启
- *
- * 局限与边界（与真实 harness 一致）：
- *   · 临时性：挂载的工具只存于内存，进程结束即失，无自动持久化/晋升路径
- *   · 信任级别等同 bash：这里用 new Function 直接执行模型代码，不是安全边界
- *   · 「能改自己」是自我修改；要成为自我进化，还需评估→晋升→持久化的闭环——本课不含
- */
+// L10
 
 import OpenAI from "openai"
 import type { ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/chat/completions"

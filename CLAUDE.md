@@ -40,6 +40,7 @@
 - **代码**：全中文注释，TS 小白友好；能省的类型体操都省（见 B 档）。
 - **行文正式、简洁**：不用口语化表达（"到点喊人""喊一嗓子""举手""焊死""插座板""购物清单"…）和比喻（"治病/病根"）。用直接的技术词：事件说「触发/广播/监听/注册」，ctx 说「共享上下文」，disposer 说「注销函数」。L1 刻意保留的不足统一叫「局限 ❶❷❸」，后续「解决/改进」它们。
 - **注释只写 why**：说明「为什么这么做／解决了什么／边界在哪」，不复述代码在做什么。能不加就不加。
+- **code.ts 顶部只放一行课号标签**（如 `// L2`），**不放标题或讲解**（讲解统一在双语 README，代码里只留 why 注释）。这也让相邻课 diff 更干净。
 - **README 结构固定**：`要解决什么问题/要说什么` → `核心代码` → `工作原理(ASCII 图)` → `三根支柱在本课的体现`(表格) → `试一下` → `接下来`。**图用 ASCII，不做 SVG。**
 - **承上启下，禁止「先使用后定义」**：阅读顺序固定 root `README.md` → L1 → … → L10。任何概念/术语/变量首次出现时必须此前已解释过。写完每课以「只读到此处的读者」视角自检，不留裸术语；root README 作为总览可提前点名后续概念，但须附一句直观说明。
 - **命名对齐真实 harness**：节俭前提下，类型/事件/变量名尽量与真源码一致（`ctx`、`Session`、`surface`、`deriveMessages`、`surfaceOp:{op:'replace'}`、`agent/pre-step`、`tools/pre-execute|post-execute|result`、`guard`、`compact/*` 等）。自造名字须在「对照真实 harness」小节点明映射。
@@ -52,6 +53,7 @@
 - **类型检查**：`npx tsc --noEmit`（**不带文件名**，让它读 tsconfig；`tsc code.ts` 会忽略 tsconfig 用错默认值）。每课交付前必须 **0 报错**。
 - **KV 缓存观测**：DeepSeek 在 `usage` 里返回 `prompt_cache_hit_tokens` / `prompt_cache_miss_tokens`（openai 标准类型里没有，用 `as any` 取）。
 - **课程网站**：`docs/` 是托管到 GitHub Pages 的纯静态站点（目录 + README + 代码 + Diff）。**改动任何一课的 README/code.ts 后，必须重跑 `node docs/build.mjs` 重新生成并提交 `docs/lessons.json`**（Pages 不跑构建，内容需预先嵌入）。每课 README 顶部有「相比上一课」changelog，需随内容同步。
+- **双语**：每课与根都有中英两版（`README.md` + `README.en.md`），网站语言切换读 `readme_en`（缺失回落 TODO 占位）。改中文内容时要同步英文版并重跑 build.mjs。代码 `code.ts` 单一中文注释、不翻译（英文读者读英文 README + 代码）。
 
 ## 5. 迷你框架 → 真实 DeepSeek Harness 映射
 

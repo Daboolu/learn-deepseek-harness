@@ -1,17 +1,4 @@
-/**
- * L2 · 一切皆插件 (支柱 P1)
- *
- * 解决 L1 局限 ❶：能力与循环耦合。做法是把循环收缩到最小——只负责驱动流程并在
- * 固定扩展点触发事件；工具等能力全部外置为插件，通过共享上下文与事件系统接入。
- *
- * 两个基础设施：
- *   1) 共享上下文 ctx —— 服务(能力)注册于此，插件间通过它互相获取
- *   2) 事件系统    —— 循环在固定点触发事件，插件监听并介入
- *
- * 事件分两类：
- *   emit      通知型：仅广播，监听者无法改变主流程（如「工具已执行」）
- *   waterfall 瀑布型：依次传递，每个监听器可改写内容后再传给下一个（如「请求前修改消息」）
- */
+// L2
 
 import OpenAI from "openai"
 import type { ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/chat/completions"

@@ -1,16 +1,4 @@
-/**
- * L6 · 上下文压缩 (P1 + P2 + P3 三支柱合流)
- *
- * 对话变长后需要压缩：把较旧的一段替换为一条摘要，缩短后续请求。
- * 这一课让三根支柱同时发挥作用：
- *   P1 压缩是一个插件，挂在 agent/pre-step，循环不改
- *   P2 压缩不删日志——仅向日志追加 compact/* 与一条带 replace 的消息，改写 surface；原始事件保留
- *   P3 两处缓存要点：
- *      · 摘要请求复用当前对话前缀(把压缩指令放末尾)，避免为摘要重算整段
- *      · 压缩替换了 surface 中间一段，会使服务端缓存从该位置起失效——这是压缩的固有代价
- *
- * 为聚焦压缩，本课仅保留 bash 工具。
- */
+// L6
 
 import OpenAI from "openai"
 import type { ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/chat/completions"

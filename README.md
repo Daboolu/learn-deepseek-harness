@@ -1,5 +1,7 @@
 # Learn DeepSeek Harness
 
+[English](README.en.md) | **中文**
+
 [![在线阅读](https://img.shields.io/badge/%F0%9F%93%96%20在线阅读-网页版课程-4c8aea?style=for-the-badge)](https://prism-shadow.github.io/learn-deepseek-harness/)
 
 从最裸的一个循环开始，一课一课地把它长成一个**真正的 agent harness**。每一课是一个能独立运行的 TypeScript 小包，`npm install && npm run dev` 就能跟真实 DeepSeek 模型对话。
