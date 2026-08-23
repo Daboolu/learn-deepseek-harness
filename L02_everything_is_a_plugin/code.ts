@@ -14,10 +14,11 @@ const MODEL = process.env.MODEL_ID ?? "deepseek-chat"
 const SYSTEM = `You are a coding agent working in ${process.cwd()}. Use tools to accomplish tasks. Act, don't over-explain.`
 
 // ═══════════════════════════════════════════════════════════════
-//  迷你框架：共享上下文 + 事件系统（后续每课原样复制）
+//  Mini framework: shared context + event system (copied verbatim into later lessons)
 //
-//  框架内部使用 any 类型是刻意的取舍。若要精确类型需为 Ctx 引入泛型与事件映射表，
-//  会偏离本课主题。真实 DeepSeek Harness 用泛型换取了完整类型安全。
+//  Using `any` inside the framework is a deliberate trade-off. Precise typing would require
+//  generics and an event map on Ctx, drifting from this lesson's topic. The real DeepSeek
+//  Harness trades generics for full type safety.
 // ═══════════════════════════════════════════════════════════════
 type NextFn = () => Promise<any>
 type Listener = (payload: any, next: NextFn) => Promise<any> | any
@@ -30,7 +31,7 @@ class Ctx {
     this.services[name] = service
   }
 
-  // 返回注销函数，便于插件卸载时清理自身监听
+  // returns an unregister function so a plugin can clean up its own listeners on unload
   on(event: string, fn: Listener): () => void {
     ;(this.listeners[event] ??= []).push(fn)
     return () => {
@@ -43,7 +44,7 @@ class Ctx {
     for (const fn of this.listeners[event] ?? []) await fn(payload, async () => {})
   }
 
-  // base 是链条走到末端时的默认返回值；每个监听器调用 next() 取得下游结果后可再加工
+  // base is the default value when the chain reaches its end; each listener calls next() to get the downstream result and may reshape it
   async waterfall(event: string, payload: any, base: NextFn): Promise<any> {
     const chain = this.listeners[event] ?? []
     let i = 0
@@ -54,7 +55,7 @@ class Ctx {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  服务：工具注册表（工具改为注册接入，不再内联于循环）
+//  Service: the tool registry (tools are now registered in, not inlined in the loop)
 // ═══════════════════════════════════════════════════════════════
 function createToolRegistry() {
   const tools: Record<string, { schema: any; run: (args: any) => string }> = {}
@@ -70,22 +71,22 @@ function createToolRegistry() {
     },
     execute(name: string, args: any): string {
       const t = tools[name]
-      if (!t) return `Error: 未知工具 ${name}`
+      if (!t) return `Error: unknown tool ${name}`
       return t.run(args)
     },
   }
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  插件 ①：bash —— 将 bash 注册为工具
+//  Plugin 1: bash — registers bash as a tool
 // ═══════════════════════════════════════════════════════════════
 function bashPlugin(ctx: Ctx) {
   function runBash(command: string): string {
     const dangerous = ["rm -rf /", "sudo", "shutdown", "reboot", "> /dev/"]
-    if (dangerous.some((d) => command.includes(d))) return "Error: 危险命令已拦截"
+    if (dangerous.some((d) => command.includes(d))) return "Error: dangerous command blocked"
     try {
       const out = execSync(command, { encoding: "utf8", timeout: 120_000, stdio: ["ignore", "pipe", "pipe"] })
-      return out.trim().slice(0, 50_000) || "(无输出)"
+      return out.trim().slice(0, 50_000) || "(no output)"
     } catch (e: any) {
       const out = ((e.stdout ?? "") + (e.stderr ?? "")).trim()
       return out ? out.slice(0, 50_000) : `Error: ${e.message}`
@@ -101,26 +102,26 @@ function bashPlugin(ctx: Ctx) {
         required: ["command"],
       },
     },
-    // 显式标注参数类型：经由 any 的 ctx.services 取到的 register 无上下文类型，strict 下需自行标注
+    // explicit param type: register obtained via the any-typed ctx.services has no contextual type, so under strict we annotate it ourselves
     (args: { command: string }) => runBash(args.command),
   )
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  插件 ②：log —— 纯观察者，仅监听「工具已执行」，不介入主流程
-//  它不改动循环与 bash，证明新增能力无需修改主干
+//  Plugin 2: log — a pure observer that only listens to "a tool has executed", without touching the main flow.
+//  It changes neither the loop nor bash, proving that adding a capability needs no change to the core.
 // ═══════════════════════════════════════════════════════════════
 function logPlugin(ctx: Ctx) {
   ctx.on("tools/result", ({ exec }) => {
-    console.log(`\x1b[90m  [log] 工具 "${exec.name}" 执行完毕\x1b[0m`)
+    console.log(`\x1b[90m  [log] tool "${exec.name}" finished\x1b[0m`)
   })
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  精简循环：只触发事件、调用服务，不含任何具体能力
+//  Minimal loop: only fires events and calls services; contains no concrete capability
 // ═══════════════════════════════════════════════════════════════
 async function step(ctx: Ctx, history: ChatCompletionMessageParam[]): Promise<boolean> {
-  // agent/pre-step 瀑布：请求前的统一介入点。当前无监听器，base 原样返回 history；L4 起在此注入上下文
+  // agent/pre-step waterfall: the unified hook before a request. No listener yet, so base returns history as-is; from L4 on, context is injected here
   const messages: ChatCompletionMessageParam[] = await ctx.waterfall("agent/pre-step", { history }, async () => history)
 
   const res = await client.chat.completions.create({
@@ -149,18 +150,18 @@ async function runAgent(ctx: Ctx, history: ChatCompletionMessageParam[]) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  组装：新增/移除能力只改动这几行，循环不动
+//  Assembly: adding/removing a capability only touches these lines; the loop stays put
 // ═══════════════════════════════════════════════════════════════
 const ctx = new Ctx()
 ctx.provide("tools", createToolRegistry())
 bashPlugin(ctx)
-logPlugin(ctx) // 注释掉此行可验证：移除能力无需改动循环
+logPlugin(ctx) // comment out this line to verify: removing a capability needs no change to the loop
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
 const history: ChatCompletionMessageParam[] = [{ role: "system", content: SYSTEM }]
 
-console.log("L2 · 一切皆插件")
-console.log("输入问题回车发送；输入 q 退出。\n")
+console.log("L2 · Everything Is a Plugin")
+console.log("Type a question and press enter; type q to quit.\n")
 
 while (true) {
   const q = await rl.question("\x1b[36mL2 >> \x1b[0m")

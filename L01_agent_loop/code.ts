@@ -6,7 +6,7 @@ import { execSync } from "node:child_process"
 import * as readline from "node:readline/promises"
 import "dotenv/config"
 
-// DeepSeek API 与 OpenAI 兼容，故用 openai SDK 指向 DeepSeek 地址
+// DeepSeek's API is OpenAI-compatible, so we use the openai SDK pointed at DeepSeek's endpoint
 const client = new OpenAI({
   apiKey: process.env.DEEPSEEK_API_KEY,
   baseURL: process.env.DEEPSEEK_BASE_URL ?? "https://api.deepseek.com",
@@ -31,15 +31,15 @@ const TOOLS: ChatCompletionTool[] = [
 ]
 
 function runBash(command: string): string {
-  // 最小安全护栏，L5 升级为完整权限管线
+  // minimal safety guard; L5 upgrades this into a full permission pipeline
   const dangerous = ["rm -rf /", "sudo", "shutdown", "reboot", "> /dev/"]
-  if (dangerous.some((d) => command.includes(d))) return "Error: 危险命令已拦截"
+  if (dangerous.some((d) => command.includes(d))) return "Error: dangerous command blocked"
 
   try {
     const out = execSync(command, { encoding: "utf8", timeout: 120_000, stdio: ["ignore", "pipe", "pipe"] })
-    return out.trim().slice(0, 50_000) || "(无输出)"
+    return out.trim().slice(0, 50_000) || "(no output)"
   } catch (e: any) {
-    // 命令退出码非 0 时 execSync 抛异常，但 stdout/stderr 仍需返回给模型
+    // a non-zero exit makes execSync throw, but stdout/stderr must still go back to the model
     const out = ((e.stdout ?? "") + (e.stderr ?? "")).trim()
     return out ? out.slice(0, 50_000) : `Error: ${e.message}`
   }
@@ -57,11 +57,11 @@ async function agentLoop(history: ChatCompletionMessageParam[]) {
     const msg = res.choices[0].message
     history.push(msg)
 
-    // 模型未请求工具，本轮结束
+    // model requested no tool, this turn is done
     if (!msg.tool_calls || msg.tool_calls.length === 0) return
 
     for (const call of msg.tool_calls) {
-      // arguments 是模型生成的 JSON 字符串，形状运行时才定：这是类型系统管不到的边界
+      // arguments is a model-generated JSON string whose shape is only known at runtime: a boundary the type system can't cover
       const args = JSON.parse(call.function.arguments) as { command: string }
       console.log(`\x1b[33m$ ${args.command}\x1b[0m`)
       const output = runBash(args.command)
@@ -74,8 +74,8 @@ async function agentLoop(history: ChatCompletionMessageParam[]) {
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
 const history: ChatCompletionMessageParam[] = [{ role: "system", content: SYSTEM }]
 
-console.log("L1 · 最裸的循环")
-console.log("输入问题回车发送；输入 q 退出。\n")
+console.log("L1 · The Bare Loop")
+console.log("Type a question and press enter; type q to quit.\n")
 
 while (true) {
   const q = await rl.question("\x1b[36mL1 >> \x1b[0m")

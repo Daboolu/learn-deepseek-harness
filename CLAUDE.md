@@ -37,7 +37,7 @@
 
 - **每课 = 一个独立可运行的 TS 包**：`LNN_名字/` 下含 `package.json` / `tsconfig.json` / `.env.example` / `code.ts` / `README.md`。进去 `npm install && npm run dev` 就能跑。
 - **迷你框架 copy-forward 内联进每课**（不抽公共库），用 `═══` 注释块划出「和上一课一样」与「本课新增」。每课自包含、能单独拷出去跑。
-- **代码**：全中文注释，TS 小白友好；能省的类型体操都省（见 B 档）。
+- **代码**：`code.ts` 全英文注释与英文字面量（单一一份，不做双语代码）；TS 小白友好；能省的类型体操都省（见 B 档）。
 - **行文正式、简洁**：不用口语化表达（"到点喊人""喊一嗓子""举手""焊死""插座板""购物清单"…）和比喻（"治病/病根"）。用直接的技术词：事件说「触发/广播/监听/注册」，ctx 说「共享上下文」，disposer 说「注销函数」。L1 刻意保留的不足统一叫「局限 ❶❷❸」，后续「解决/改进」它们。
 - **注释只写 why**：说明「为什么这么做／解决了什么／边界在哪」，不复述代码在做什么。能不加就不加。
 - **按 seq 取事件一律直接索引 `this.events[seq]`**：Session 里 `seq` 恒等于事件在 `events` 中的下标（events 只增、seq 与 push 同步自增），所以查找事件用 `this.events[seq]`（O(1)），**不要用 `.find(e=>e.seq===seq)` 或构建 `bySeq` Map**（O(n)、且每次重建）。
@@ -54,7 +54,7 @@
 - **类型检查**：`npx tsc --noEmit`（**不带文件名**，让它读 tsconfig；`tsc code.ts` 会忽略 tsconfig 用错默认值）。每课交付前必须 **0 报错**。
 - **KV 缓存观测**：DeepSeek 在 `usage` 里返回 `prompt_cache_hit_tokens` / `prompt_cache_miss_tokens`（openai 标准类型里没有，用 `as any` 取）。
 - **课程网站**：`docs/` 是托管到 GitHub Pages 的纯静态站点（目录 + README + 代码 + Diff）。**改动任何一课的 README/code.ts 后，必须重跑 `node docs/build.mjs` 重新生成并提交 `docs/lessons.json`**（Pages 不跑构建，内容需预先嵌入）。每课 README 顶部有「相比上一课」changelog，需随内容同步。
-- **双语**：每课与根都有中英两版（`README.md` + `README.en.md`），网站语言切换读 `readme_en`（缺失回落 TODO 占位）。改中文内容时要同步英文版并重跑 build.mjs。代码 `code.ts` 单一中文注释、不翻译（英文读者读英文 README + 代码）。
+- **双语**：每课与根都有中英两版（`README.md` + `README.en.md`），网站语言切换读 `readme_en`（缺失回落 TODO 占位）。改中文内容时要同步英文版并重跑 build.mjs。代码 `code.ts` 单一一份、全英文注释与字面量。
 
 ## 5. 迷你框架 → 真实 DeepSeek Harness 映射
 

@@ -14,7 +14,7 @@ const MODEL = process.env.MODEL_ID ?? "deepseek-chat"
 const SYSTEM = `You are a coding agent working in ${process.cwd()}. Use tools to accomplish tasks. Act, don't over-explain.`
 
 // ═══════════════════════════════════════════════════════════════
-//  迷你框架（同 L2）
+//  Mini framework (same as L2)
 // ═══════════════════════════════════════════════════════════════
 type NextFn = () => Promise<any>
 type Listener = (payload: any, next: NextFn) => Promise<any> | any
@@ -45,7 +45,7 @@ class Ctx {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  ★ 本课主角：Session —— append-only 事件日志
+//  ★ Star of this lesson: Session — an append-only event log
 // ═══════════════════════════════════════════════════════════════
 type SurfaceType = "user/message" | "assistant/message" | "tool/result"
 interface SessionEvent {
@@ -56,10 +56,10 @@ interface SessionEvent {
 
 class Session {
   events: SessionEvent[] = []
-  surface: number[] = [] // 进入对话的事件 seq，有序
+  surface: number[] = [] // seqs of events on the surface, ordered
   private seqCounter = 0
 
-  // onSurface 决定该事件是否进入对话。L3 仅支持追加；replace 在 L6 引入
+  // onSurface decides whether the event enters the conversation. L3 only supports append; replace arrives in L6
   append(type: SessionEvent["type"], data: any, onSurface = false): SessionEvent {
     const event: SessionEvent = { seq: this.seqCounter++, type, data }
     this.events.push(event)
@@ -68,25 +68,25 @@ class Session {
   }
 
   deriveMessages(): ChatCompletionMessageParam[] {
-    // seq 等于事件在 events 中的下标（events 只增，seq 与 push 同步自增），故可直接索引
+    // seq equals the event's index in events (events only grows, seq increments in lockstep with push), so index directly
     return this.surface.map((seq) => {
       const e = this.events[seq]
       switch (e.type) {
         case "user/message":
           return { role: "user", content: e.data.content }
         case "assistant/message":
-          return e.data.message // 存入的是模型返回的完整消息，含 content 与 tool_calls
+          return e.data.message // stores the full model message, including content and tool_calls
         case "tool/result":
           return { role: "tool", tool_call_id: e.data.tool_call_id, content: e.data.content }
         default:
-          throw new Error(`非 surface 事件不应出现在 surface 列表中: ${e.type}`)
+          throw new Error(`a non-surface event should not appear in the surface list: ${e.type}`)
       }
     })
   }
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  工具注册表 + bash/log 插件（同 L2）
+//  Tool registry + bash/log plugins (same as L2)
 // ═══════════════════════════════════════════════════════════════
 function createToolRegistry() {
   const tools: Record<string, { schema: any; run: (args: any) => string }> = {}
@@ -102,7 +102,7 @@ function createToolRegistry() {
     },
     execute(name: string, args: any): string {
       const t = tools[name]
-      if (!t) return `Error: 未知工具 ${name}`
+      if (!t) return `Error: unknown tool ${name}`
       return t.run(args)
     },
   }
@@ -111,10 +111,10 @@ function createToolRegistry() {
 function bashPlugin(ctx: Ctx) {
   function runBash(command: string): string {
     const dangerous = ["rm -rf /", "sudo", "shutdown", "reboot", "> /dev/"]
-    if (dangerous.some((d) => command.includes(d))) return "Error: 危险命令已拦截"
+    if (dangerous.some((d) => command.includes(d))) return "Error: dangerous command blocked"
     try {
       const out = execSync(command, { encoding: "utf8", timeout: 120_000, stdio: ["ignore", "pipe", "pipe"] })
-      return out.trim().slice(0, 50_000) || "(无输出)"
+      return out.trim().slice(0, 50_000) || "(no output)"
     } catch (e: any) {
       const out = ((e.stdout ?? "") + (e.stderr ?? "")).trim()
       return out ? out.slice(0, 50_000) : `Error: ${e.message}`
@@ -136,15 +136,15 @@ function bashPlugin(ctx: Ctx) {
 
 function logPlugin(ctx: Ctx) {
   ctx.on("tools/result", ({ exec }) => {
-    console.log(`\x1b[90m  [log] 工具 "${exec.name}" 执行完毕\x1b[0m`)
+    console.log(`\x1b[90m  [log] tool "${exec.name}" finished\x1b[0m`)
   })
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  循环：改为向 Session 追加事件，不再直接改数组
+//  Loop: now appends events to the Session instead of mutating an array
 // ═══════════════════════════════════════════════════════════════
 async function step(ctx: Ctx, session: Session): Promise<boolean> {
-  // SYSTEM 每次组装、不写入日志：它属于请求信封，不属于对话历史
+  // SYSTEM is assembled each time and not written to the log: it belongs to the request envelope, not the conversation history
   const messages: ChatCompletionMessageParam[] = await ctx.waterfall("agent/pre-step", { session }, async () => [
     { role: "system", content: SYSTEM },
     ...session.deriveMessages(),
@@ -172,14 +172,14 @@ async function step(ctx: Ctx, session: Session): Promise<boolean> {
 }
 
 async function runTurn(ctx: Ctx, session: Session, userText: string) {
-  session.append("turn/start", { text: userText }) // 边界事件，不进入 surface
+  session.append("turn/start", { text: userText }) // boundary event, does not enter the surface
   session.append("user/message", { content: userText }, true)
   while (await step(ctx, session)) {}
   session.append("turn/end", {})
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  组装
+//  Assembly
 // ═══════════════════════════════════════════════════════════════
 const ctx = new Ctx()
 ctx.provide("tools", createToolRegistry())
@@ -190,8 +190,8 @@ const session = new Session()
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
 
-console.log("L3 · Session Log 是唯一真相")
-console.log("命令：/log 打印事件日志 | /surface 打印 surface | q 退出\n")
+console.log("L3 · The Session Log Is the Single Source of Truth")
+console.log("Commands: /log print the event log | /surface print the surface | q to quit\n")
 
 while (true) {
   const q = await rl.question("\x1b[36mL3 >> \x1b[0m")
@@ -199,21 +199,21 @@ while (true) {
   if (["q", "exit", ""].includes(cmd)) break
 
   if (cmd === "/log") {
-    console.log("\x1b[90m── 事件日志（记录全部事件）──\x1b[0m")
+    console.log("\x1b[90m── event log (records all events) ──\x1b[0m")
     for (const e of session.events) {
-      const on = session.surface.includes(e.seq) ? "\x1b[32m[在 surface]\x1b[0m" : "\x1b[90m[仅日志]\x1b[0m"
+      const on = session.surface.includes(e.seq) ? "\x1b[32m[on surface]\x1b[0m" : "\x1b[90m[log only]\x1b[0m"
       console.log(`  seq ${String(e.seq).padStart(2)} ${e.type.padEnd(18)} ${on}`)
     }
     console.log()
     continue
   }
   if (cmd === "/surface") {
-    console.log(`\x1b[90msurface（模型看到的 seq 顺序）:\x1b[0m [${session.surface.join(", ")}]\n`)
+    console.log(`\x1b[90msurface (seq order the model sees):\x1b[0m [${session.surface.join(", ")}]\n`)
     continue
   }
 
   await runTurn(ctx, session, q)
-  // 末尾是 turn/end，其前一条为本轮最后的 assistant 消息
+  // the last event is turn/end; the one before it is this turn's final assistant message
   const last = session.events[session.events.length - 2]
   if (last?.type === "assistant/message" && typeof last.data.message.content === "string") {
     console.log(last.data.message.content)

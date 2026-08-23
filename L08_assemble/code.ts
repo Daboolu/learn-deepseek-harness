@@ -15,7 +15,7 @@ const MODEL = process.env.MODEL_ID ?? "deepseek-chat"
 const SYSTEM = `You are a coding agent working in ${process.cwd()}. Use tools to accomplish tasks. When the user states a durable fact about themselves or the project, call remember. Act, don't over-explain.`
 
 // ═══════════════════════════════════════════════════════════════
-//  迷你框架
+//  Mini framework
 // ═══════════════════════════════════════════════════════════════
 type NextFn = () => Promise<any>
 type Listener = (payload: any, next: NextFn) => Promise<any> | any
@@ -46,7 +46,7 @@ class Ctx {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  Session（含 replace，来自 L6）
+//  Session (with replace, from L6)
 // ═══════════════════════════════════════════════════════════════
 type SurfaceType = "user/message" | "assistant/message" | "tool/result"
 type SurfaceOp = "append" | { op: "replace"; start: number; end: number }
@@ -72,10 +72,10 @@ class Session {
     return event
   }
   typeOfSeq(seq: number): string {
-    return this.events[seq].type // seq 即事件下标，直接索引
+    return this.events[seq].type // seq is the event index, so index directly
   }
   deriveMessages(seqs: number[] = this.surface): ChatCompletionMessageParam[] {
-    // seq 等于事件在 events 中的下标（events 只增，seq 与 push 同步自增），故可直接索引
+    // seq equals the event's index in events (events only grows, seq increments in lockstep with push), so index directly
     return seqs.map((seq) => {
       const e = this.events[seq]
       switch (e.type) {
@@ -86,14 +86,14 @@ class Session {
         case "tool/result":
           return { role: "tool", tool_call_id: e.data.tool_call_id, content: e.data.content }
         default:
-          throw new Error(`非 surface 事件不应出现在 surface 列表中: ${e.type}`)
+          throw new Error(`a non-surface event should not appear in the surface list: ${e.type}`)
       }
     })
   }
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  带管线的工具注册表（来自 L5）
+//  Tool registry with the pipeline (from L5)
 // ═══════════════════════════════════════════════════════════════
 interface ToolExec {
   callId: string
@@ -127,11 +127,11 @@ function createToolRegistry(ctx: Ctx) {
       }
       if (decision.kind === "ask") {
         const confirm = ctx.services.confirm as undefined | ((e: ToolExec, r: string) => Promise<boolean>)
-        decision = confirm && (await confirm(exec, decision.reason)) ? { kind: "allow" } : { kind: "deny", reason: "用户未批准" }
+        decision = confirm && (await confirm(exec, decision.reason)) ? { kind: "allow" } : { kind: "deny", reason: "not approved by user" }
       }
-      if (decision.kind === "deny") return { content: `Error: 工具调用被拒绝 —— ${decision.reason}`, isError: true }
+      if (decision.kind === "deny") return { content: `Error: tool call denied — ${decision.reason}`, isError: true }
       const t = tools[exec.name]
-      let result: ToolResult = t ? { content: t.run(exec.args), isError: false } : { content: `Error: 未知工具 ${exec.name}`, isError: true }
+      let result: ToolResult = t ? { content: t.run(exec.args), isError: false } : { content: `Error: unknown tool ${exec.name}`, isError: true }
       result = await ctx.waterfall("tools/post-execute", { exec, result }, async () => result)
       await ctx.emit("tools/result", { exec, result })
       return result
@@ -140,7 +140,7 @@ function createToolRegistry(ctx: Ctx) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  插件们（各自独立，均来自前面的课）
+//  Plugins (each independent, all from earlier lessons)
 // ═══════════════════════════════════════════════════════════════
 function bashPlugin(ctx: Ctx) {
   ctx.services.tools.register(
@@ -148,7 +148,7 @@ function bashPlugin(ctx: Ctx) {
     { description: "Run a shell command.", parameters: { type: "object", properties: { command: { type: "string" } }, required: ["command"] } },
     (args: { command: string }) => {
       try {
-        return execSync(args.command, { encoding: "utf8", timeout: 120_000, stdio: ["ignore", "pipe", "pipe"] }).trim().slice(0, 50_000) || "(无输出)"
+        return execSync(args.command, { encoding: "utf8", timeout: 120_000, stdio: ["ignore", "pipe", "pipe"] }).trim().slice(0, 50_000) || "(no output)"
       } catch (e: any) {
         return (((e.stdout ?? "") + (e.stderr ?? "")).trim() || `Error: ${e.message}`).slice(0, 50_000)
       }
@@ -172,21 +172,21 @@ function readFilePlugin(ctx: Ctx) {
 
 function permissionPlugin(ctx: Ctx) {
   ctx.services.tools.guard((exec: ToolExec) =>
-    exec.name === "bash" && /rm\s+-rf\s+\/(?!\w)|shutdown|reboot/.test(exec.args.command ?? "") ? "命中不可执行的危险模式" : undefined,
+    exec.name === "bash" && /rm\s+-rf\s+\/(?!\w)|shutdown|reboot/.test(exec.args.command ?? "") ? "matched an unexecutable dangerous pattern" : undefined,
   )
   ctx.on("tools/pre-execute", ({ exec }: { exec: ToolExec }): PreToolDecision => {
     if (exec.name === "bash" && /\b(rm|mv|cp|chmod|git\s+push|>|>>|tee|mkdir|touch|npm\s+i)/.test(exec.args.command ?? "")) {
-      return { kind: "ask", reason: `即将执行可能修改系统的命令：${exec.args.command}` }
+      return { kind: "ask", reason: `about to run a command that may modify the system: ${exec.args.command}` }
     }
     return { kind: "allow" }
   })
 }
 
 function timeContextPlugin(ctx: Ctx) {
-  // 追加到末尾，保持前缀稳定（P3）
+  // append to the end to keep the prefix stable (P3)
   ctx.on("agent/pre-step", async (_p: unknown, next: NextFn) => {
     const messages: ChatCompletionMessageParam[] = await next()
-    return [...messages, { role: "user", content: `[上下文] 当前时间：${new Date().toISOString()}` }]
+    return [...messages, { role: "user", content: `[context] current time: ${new Date().toISOString()}` }]
   })
 }
 
@@ -201,25 +201,25 @@ function memoryPlugin(ctx: Ctx) {
     (args: { fact: string }) => {
       memories.push({ text: args.fact, ts: new Date().toISOString() })
       writeFileSync(MEMORY_FILE, JSON.stringify(memories, null, 2))
-      return `已记住：${args.fact}`
+      return `Remembered: ${args.fact}`
     },
   )
   ctx.on("agent/pre-step", async ({ session }: { session: Session }, next: NextFn) => {
     if (!recalled && memories.length) {
       recalled = true
-      session.append("user/message", { content: `[记忆] 既有事实：\n${memories.map((m, i) => `${i + 1}. ${m.text}`).join("\n")}` }, "append")
+      session.append("user/message", { content: `[memory] known facts:\n${memories.map((m, i) => `${i + 1}. ${m.text}`).join("\n")}` }, "append")
     }
     return next()
   })
 }
 
-const COMPACT_INSTRUCTION = "你现在是压缩引擎。请将上面的对话浓缩为一段简洁检查点，保留目标、关键步骤、结论与未决事项。只输出正文，不要调用工具，不要提及本次压缩。"
+const COMPACT_INSTRUCTION = "You are now a compaction engine. Condense the conversation above into a concise checkpoint, preserving the goal, key steps, conclusions, and open items. Output only the checkpoint text; do not call tools, and do not mention this compaction."
 function compactionPlugin(ctx: Ctx, threshold = 10, retain = 4) {
   async function summarize(rangeMsgs: ChatCompletionMessageParam[]): Promise<string> {
-    // 复用对话前缀 + 指令后置，最大化缓存命中（P3）
+    // reuse the conversation prefix + instruction at the end to maximize cache hits (P3)
     const messages: ChatCompletionMessageParam[] = [{ role: "system", content: SYSTEM }, ...rangeMsgs, { role: "user", content: COMPACT_INSTRUCTION }]
     const res = await client.chat.completions.create({ model: MODEL, messages, tools: ctx.services.tools.schemas(), max_tokens: 1024 })
-    return res.choices[0].message.content ?? "(摘要为空)"
+    return res.choices[0].message.content ?? "(empty summary)"
   }
   ctx.on("agent/pre-step", async ({ session }: { session: Session }, next: NextFn) => {
     if (session.surface.length > threshold && session.surface.length > retain) {
@@ -234,7 +234,7 @@ function compactionPlugin(ctx: Ctx, threshold = 10, retain = 4) {
         session.append("compact/summary", { summary, shadowed: range })
         session.append("user/message", { content: `<compacted-summary>\n${summary}\n</compacted-summary>` }, { op: "replace", start, end })
         session.append("compact/end", {})
-        console.log(`\x1b[35m[compaction] 已压缩 surface[${start}..${end}]\x1b[0m`)
+        console.log(`\x1b[35m[compaction] compacted surface[${start}..${end}]\x1b[0m`)
       }
     }
     return next()
@@ -242,7 +242,7 @@ function compactionPlugin(ctx: Ctx, threshold = 10, retain = 4) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  循环
+//  Loop
 // ═══════════════════════════════════════════════════════════════
 async function step(ctx: Ctx, session: Session): Promise<boolean> {
   const messages: ChatCompletionMessageParam[] = await ctx.waterfall("agent/pre-step", { session }, async () => [
@@ -273,7 +273,7 @@ async function runTurn(ctx: Ctx, session: Session, userText: string) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  组装：一个完整 harness。增删能力只改这一段
+//  Assembly: a complete harness. Adding/removing a capability only touches this block
 // ═══════════════════════════════════════════════════════════════
 const ctx = new Ctx()
 ctx.provide("tools", createToolRegistry(ctx))
@@ -286,10 +286,10 @@ compactionPlugin(ctx)
 
 const session = new Session()
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
-ctx.provide("confirm", async (_e: ToolExec, reason: string) => (await rl.question(`\x1b[31m[确认] ${reason}\n  允许? (y/N) \x1b[0m`)).trim().toLowerCase() === "y")
+ctx.provide("confirm", async (_e: ToolExec, reason: string) => (await rl.question(`\x1b[31m[confirm] ${reason}\n  Allow? (y/N) \x1b[0m`)).trim().toLowerCase() === "y")
 
-console.log("L8 · 组装成小 harness")
-console.log("已装载：bash + read_file + 权限 + 记忆 + 时间上下文 + 压缩。输入 q 退出。\n")
+console.log("L8 · Assemble a Small Harness")
+console.log("Loaded: bash + read_file + permissions + memory + time context + compaction. Type q to quit.\n")
 
 while (true) {
   const q = await rl.question("\x1b[36mL8 >> \x1b[0m")

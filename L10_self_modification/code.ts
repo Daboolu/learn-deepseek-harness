@@ -18,7 +18,7 @@ const SYSTEM =
   `Act, don't over-explain.`
 
 // ═══════════════════════════════════════════════════════════════
-//  迷你框架（同前）
+//  Mini framework (same as before)
 // ═══════════════════════════════════════════════════════════════
 type NextFn = () => Promise<any>
 type Listener = (payload: any, next: NextFn) => Promise<any> | any
@@ -49,7 +49,7 @@ class Ctx {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  Session（同 L3）
+//  Session (same as L3)
 // ═══════════════════════════════════════════════════════════════
 type SurfaceType = "user/message" | "assistant/message" | "tool/result"
 interface SessionEvent {
@@ -69,7 +69,7 @@ class Session {
     return event
   }
   deriveMessages(): ChatCompletionMessageParam[] {
-    // seq 等于事件在 events 中的下标（events 只增，seq 与 push 同步自增），故可直接索引
+    // seq equals the event's index in events (events only grows, seq increments in lockstep with push), so index directly
     return this.surface.map((seq) => {
       const e = this.events[seq]
       switch (e.type) {
@@ -80,14 +80,14 @@ class Session {
         case "tool/result":
           return { role: "tool", tool_call_id: e.data.tool_call_id, content: e.data.content }
         default:
-          throw new Error(`非 surface 事件不应出现在 surface 列表中: ${e.type}`)
+          throw new Error(`a non-surface event should not appear in the surface list: ${e.type}`)
       }
     })
   }
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  工具注册表（execute 异步；支持运行时随时 register）
+//  Tool registry (execute async; supports register at any time at runtime)
 // ═══════════════════════════════════════════════════════════════
 function createToolRegistry() {
   const tools: Record<string, { schema: any; run: (args: any) => string | Promise<string> }> = {}
@@ -95,13 +95,13 @@ function createToolRegistry() {
     register(name: string, schema: any, run: (args: any) => string | Promise<string>) {
       tools[name] = { schema, run }
     },
-    // 每次请求都重新调用它生成工具清单——因此运行时新增的工具下一步即可见
+    // called anew on every request to regenerate the tool list — so a tool added at runtime is visible on the next step
     schemas(): ChatCompletionTool[] {
       return Object.entries(tools).map(([name, t]) => ({ type: "function", function: { name, ...t.schema } }))
     },
     async execute(name: string, args: any): Promise<string> {
       const t = tools[name]
-      return t ? await t.run(args) : `Error: 未知工具 ${name}`
+      return t ? await t.run(args) : `Error: unknown tool ${name}`
     },
   }
 }
@@ -112,7 +112,7 @@ function bashPlugin(ctx: Ctx) {
     { description: "Run a shell command.", parameters: { type: "object", properties: { command: { type: "string" } }, required: ["command"] } },
     (args: { command: string }) => {
       try {
-        return execSync(args.command, { encoding: "utf8", timeout: 120_000, stdio: ["ignore", "pipe", "pipe"] }).trim().slice(0, 50_000) || "(无输出)"
+        return execSync(args.command, { encoding: "utf8", timeout: 120_000, stdio: ["ignore", "pipe", "pipe"] }).trim().slice(0, 50_000) || "(no output)"
       } catch (e: any) {
         return (((e.stdout ?? "") + (e.stderr ?? "")).trim() || `Error: ${e.message}`).slice(0, 50_000)
       }
@@ -121,7 +121,7 @@ function bashPlugin(ctx: Ctx) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  ★ 本课主角：自我修改工具 define_tool
+//  ★ Star of this lesson: the self-modification tool define_tool
 // ═══════════════════════════════════════════════════════════════
 function selfModificationPlugin(ctx: Ctx) {
   ctx.services.tools.register(
@@ -143,10 +143,10 @@ function selfModificationPlugin(ctx: Ctx) {
     (args: { name: string; description: string; code: string }) => {
       let fn: (input: string) => unknown
       try {
-        // 直接执行模型编写的代码：信任级别等同 bash，非安全边界
+        // run the model-written code directly: trust level equals bash, not a security boundary
         fn = new Function("input", args.code) as (input: string) => unknown
       } catch (e: any) {
-        return `Error: 代码解析失败 —— ${e.message}`
+        return `Error: failed to parse code — ${e.message}`
       }
       ctx.services.tools.register(
         args.name,
@@ -159,14 +159,14 @@ function selfModificationPlugin(ctx: Ctx) {
           }
         },
       )
-      console.log(`\x1b[35m[self-mod] 已挂载新工具 "${args.name}"\x1b[0m`)
-      return `已挂载工具 "${args.name}"，本会话内可直接调用（临时，进程结束即失）。`
+      console.log(`\x1b[35m[self-mod] mounted new tool "${args.name}"\x1b[0m`)
+      return `Mounted tool "${args.name}"; callable within this session (ephemeral, lost when the process ends).`
     },
   )
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  循环
+//  Loop
 // ═══════════════════════════════════════════════════════════════
 async function step(ctx: Ctx, session: Session): Promise<boolean> {
   const messages: ChatCompletionMessageParam[] = await ctx.waterfall("agent/pre-step", { session }, async () => [
@@ -195,7 +195,7 @@ async function runTurn(ctx: Ctx, session: Session, userText: string) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  组装
+//  Assembly
 // ═══════════════════════════════════════════════════════════════
 const ctx = new Ctx()
 ctx.provide("tools", createToolRegistry())
@@ -205,8 +205,8 @@ selfModificationPlugin(ctx)
 const session = new Session()
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
 
-console.log("L10 · 自我修改")
-console.log("可要求它先给自己造一个工具，再用这个工具。输入 q 退出。\n")
+console.log("L10 · Self-Modification")
+console.log("Ask it to build itself a tool first, then use that tool. Type q to quit.\n")
 
 while (true) {
   const q = await rl.question("\x1b[36mL10 >> \x1b[0m")

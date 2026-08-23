@@ -15,7 +15,7 @@ const SYSTEM = `You are a coding agent working in ${process.cwd()}. For a self-c
 const CHILD_SYSTEM = `You are a sub-agent with an isolated context. Complete the delegated task using bash, then report a concise final result. You cannot delegate further.`
 
 // ═══════════════════════════════════════════════════════════════
-//  迷你框架（同前）
+//  Mini framework (same as before)
 // ═══════════════════════════════════════════════════════════════
 type NextFn = () => Promise<any>
 type Listener = (payload: any, next: NextFn) => Promise<any> | any
@@ -46,7 +46,7 @@ class Ctx {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  Session（同 L3）
+//  Session (same as L3)
 // ═══════════════════════════════════════════════════════════════
 type SurfaceType = "user/message" | "assistant/message" | "tool/result"
 interface SessionEvent {
@@ -66,7 +66,7 @@ class Session {
     return event
   }
   deriveMessages(): ChatCompletionMessageParam[] {
-    // seq 等于事件在 events 中的下标（events 只增，seq 与 push 同步自增），故可直接索引
+    // seq equals the event's index in events (events only grows, seq increments in lockstep with push), so index directly
     return this.surface.map((seq) => {
       const e = this.events[seq]
       switch (e.type) {
@@ -77,14 +77,14 @@ class Session {
         case "tool/result":
           return { role: "tool", tool_call_id: e.data.tool_call_id, content: e.data.content }
         default:
-          throw new Error(`非 surface 事件不应出现在 surface 列表中: ${e.type}`)
+          throw new Error(`a non-surface event should not appear in the surface list: ${e.type}`)
       }
     })
   }
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  工具注册表：execute 改为异步（子 agent 的执行是异步的）
+//  Tool registry: execute becomes async (a subagent's execution is async)
 // ═══════════════════════════════════════════════════════════════
 function createToolRegistry() {
   const tools: Record<string, { schema: any; run: (args: any) => string | Promise<string> }> = {}
@@ -95,13 +95,13 @@ function createToolRegistry() {
     schemas(): ChatCompletionTool[] {
       return Object.entries(tools).map(([name, t]) => ({ type: "function", function: { name, ...t.schema } }))
     },
-    // 仅暴露指定名字的工具 schema，用于给子 agent 一个受限工具集（防止无限委派）
+    // expose only the named tool schemas, to give a subagent a restricted tool set (prevents unbounded delegation)
     schemasFor(names: string[]): ChatCompletionTool[] {
       return this.schemas().filter((t) => names.includes(t.function.name))
     },
     async execute(name: string, args: any): Promise<string> {
       const t = tools[name]
-      return t ? await t.run(args) : `Error: 未知工具 ${name}`
+      return t ? await t.run(args) : `Error: unknown tool ${name}`
     },
   }
 }
@@ -112,7 +112,7 @@ function bashPlugin(ctx: Ctx) {
     { description: "Run a shell command.", parameters: { type: "object", properties: { command: { type: "string" } }, required: ["command"] } },
     (args: { command: string }) => {
       try {
-        return execSync(args.command, { encoding: "utf8", timeout: 120_000, stdio: ["ignore", "pipe", "pipe"] }).trim().slice(0, 50_000) || "(无输出)"
+        return execSync(args.command, { encoding: "utf8", timeout: 120_000, stdio: ["ignore", "pipe", "pipe"] }).trim().slice(0, 50_000) || "(no output)"
       } catch (e: any) {
         return (((e.stdout ?? "") + (e.stderr ?? "")).trim() || `Error: ${e.message}`).slice(0, 50_000)
       }
@@ -121,29 +121,29 @@ function bashPlugin(ctx: Ctx) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  ★ 本课主角：子 agent
+//  ★ Star of this lesson: the subagent
 // ═══════════════════════════════════════════════════════════════
 
-// 运行一个拥有独立 Session、受限工具集(仅 bash)的子循环，直至其不再调用工具，返回最终文本
+// run a child loop with its own Session and a restricted tool set (bash only), until it stops calling tools, then return the final text
 async function runSubagent(ctx: Ctx, task: string): Promise<string> {
   const child = new Session()
   child.append("user/message", { content: task }, true)
-  const childTools = ctx.services.tools.schemasFor(["bash"]) // 不含 spawn_subagent，避免无限委派
+  const childTools = ctx.services.tools.schemasFor(["bash"]) // excludes spawn_subagent, avoiding unbounded delegation
 
   for (let guard = 0; guard < 20; guard++) {
     const messages: ChatCompletionMessageParam[] = [{ role: "system", content: CHILD_SYSTEM }, ...child.deriveMessages()]
     const res = await client.chat.completions.create({ model: MODEL, messages, tools: childTools, max_tokens: 2000 })
     const msg = res.choices[0].message
     child.append("assistant/message", { message: msg }, true)
-    if (!msg.tool_calls?.length) return typeof msg.content === "string" ? msg.content : "(子 agent 无输出)"
+    if (!msg.tool_calls?.length) return typeof msg.content === "string" ? msg.content : "(subagent produced no output)"
     for (const call of msg.tool_calls) {
       const args = JSON.parse(call.function.arguments)
-      console.log(`\x1b[90m    [子 agent] $ ${args.command}\x1b[0m`)
+      console.log(`\x1b[90m    [subagent] $ ${args.command}\x1b[0m`)
       const output = await ctx.services.tools.execute(call.function.name, args)
       child.append("tool/result", { tool_call_id: call.id, content: output }, true)
     }
   }
-  return "(子 agent 超出步数上限)"
+  return "(subagent exceeded the step limit)"
 }
 
 function subagentPlugin(ctx: Ctx) {
@@ -154,14 +154,14 @@ function subagentPlugin(ctx: Ctx) {
       parameters: { type: "object", properties: { task: { type: "string", description: "the self-contained task description" } }, required: ["task"] },
     },
     async (args: { task: string }) => {
-      console.log(`\x1b[90m  [派生子 agent] ${args.task}\x1b[0m`)
-      return await runSubagent(ctx, args.task) // 只有这段返回值进入父 agent 的上下文
+      console.log(`\x1b[90m  [spawn subagent] ${args.task}\x1b[0m`)
+      return await runSubagent(ctx, args.task) // only this return value enters the parent agent's context
     },
   )
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  父循环（execute 现为异步）
+//  Parent loop (execute is now async)
 // ═══════════════════════════════════════════════════════════════
 async function step(ctx: Ctx, session: Session): Promise<boolean> {
   const messages: ChatCompletionMessageParam[] = await ctx.waterfall("agent/pre-step", { session }, async () => [
@@ -190,7 +190,7 @@ async function runTurn(ctx: Ctx, session: Session, userText: string) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  组装
+//  Assembly
 // ═══════════════════════════════════════════════════════════════
 const ctx = new Ctx()
 ctx.provide("tools", createToolRegistry())
@@ -200,8 +200,8 @@ subagentPlugin(ctx)
 const session = new Session()
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
 
-console.log("L9 · 子 agent")
-console.log("给它一个需要多步探索的任务，它会派生子 agent 处理并只回传结论。输入 q 退出。\n")
+console.log("L9 · Subagent")
+console.log("Give it a task that needs multi-step exploration; it spawns a subagent and returns only the conclusion. Type q to quit.\n")
 
 while (true) {
   const q = await rl.question("\x1b[36mL9 >> \x1b[0m")

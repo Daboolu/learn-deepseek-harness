@@ -15,7 +15,7 @@ const MODEL = process.env.MODEL_ID ?? "deepseek-chat"
 const SYSTEM = `You are a coding agent working in ${process.cwd()}. Use tools to accomplish tasks. When the user tells you a durable fact about themselves or the project, call remember to save it. Act, don't over-explain.`
 
 // ═══════════════════════════════════════════════════════════════
-//  迷你框架（同前）
+//  Mini framework (same as before)
 // ═══════════════════════════════════════════════════════════════
 type NextFn = () => Promise<any>
 type Listener = (payload: any, next: NextFn) => Promise<any> | any
@@ -46,7 +46,7 @@ class Ctx {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  Session（同 L3）
+//  Session (same as L3)
 // ═══════════════════════════════════════════════════════════════
 type SurfaceType = "user/message" | "assistant/message" | "tool/result"
 interface SessionEvent {
@@ -66,7 +66,7 @@ class Session {
     return event
   }
   deriveMessages(): ChatCompletionMessageParam[] {
-    // seq 等于事件在 events 中的下标（events 只增，seq 与 push 同步自增），故可直接索引
+    // seq equals the event's index in events (events only grows, seq increments in lockstep with push), so index directly
     return this.surface.map((seq) => {
       const e = this.events[seq]
       switch (e.type) {
@@ -77,14 +77,14 @@ class Session {
         case "tool/result":
           return { role: "tool", tool_call_id: e.data.tool_call_id, content: e.data.content }
         default:
-          throw new Error(`非 surface 事件不应出现在 surface 列表中: ${e.type}`)
+          throw new Error(`a non-surface event should not appear in the surface list: ${e.type}`)
       }
     })
   }
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  工具注册表 + bash
+//  Tool registry + bash
 // ═══════════════════════════════════════════════════════════════
 function createToolRegistry() {
   const tools: Record<string, { schema: any; run: (args: any) => string }> = {}
@@ -97,7 +97,7 @@ function createToolRegistry() {
     },
     execute(name: string, args: any): string {
       const t = tools[name]
-      return t ? t.run(args) : `Error: 未知工具 ${name}`
+      return t ? t.run(args) : `Error: unknown tool ${name}`
     },
   }
 }
@@ -108,7 +108,7 @@ function bashPlugin(ctx: Ctx) {
     { description: "Run a shell command.", parameters: { type: "object", properties: { command: { type: "string" } }, required: ["command"] } },
     (args: { command: string }) => {
       try {
-        return execSync(args.command, { encoding: "utf8", timeout: 120_000, stdio: ["ignore", "pipe", "pipe"] }).trim().slice(0, 50_000) || "(无输出)"
+        return execSync(args.command, { encoding: "utf8", timeout: 120_000, stdio: ["ignore", "pipe", "pipe"] }).trim().slice(0, 50_000) || "(no output)"
       } catch (e: any) {
         return (((e.stdout ?? "") + (e.stderr ?? "")).trim() || `Error: ${e.message}`).slice(0, 50_000)
       }
@@ -117,7 +117,7 @@ function bashPlugin(ctx: Ctx) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  ★ 本课主角：记忆插件
+//  ★ Star of this lesson: the memory plugin
 // ═══════════════════════════════════════════════════════════════
 const MEMORY_FILE = "agent-memory.json"
 
@@ -126,7 +126,7 @@ function memoryPlugin(ctx: Ctx) {
   const memories: Memory[] = existsSync(MEMORY_FILE) ? JSON.parse(readFileSync(MEMORY_FILE, "utf8")) : []
   let recalled = false
 
-  // 写入：remember 工具。持久化到磁盘文件，供未来会话读取
+  // write: the remember tool. Persists to a disk file so future sessions can read it back
   ctx.services.tools.register(
     "remember",
     {
@@ -136,25 +136,25 @@ function memoryPlugin(ctx: Ctx) {
     (args: { fact: string }) => {
       memories.push({ text: args.fact, ts: new Date().toISOString() })
       writeFileSync(MEMORY_FILE, JSON.stringify(memories, null, 2))
-      return `已记住：${args.fact}`
+      return `Remembered: ${args.fact}`
     },
   )
 
-  // 召回：本会话首次 agent/pre-step 时，把既有事实作为一条事件写入 surface（仅一次）。
-  // 它较早且稳定，故对缓存友好。真实系统会按相关性检索，这里注入全部。
+  // recall: on this session's first agent/pre-step, write the known facts as one event onto the surface (once).
+  // It is early and stable, so it is cache-friendly. A real system retrieves by relevance; here we inject all of them.
   ctx.on("agent/pre-step", async ({ session }: { session: Session }, next: NextFn) => {
     if (!recalled && memories.length) {
       recalled = true
       const list = memories.map((m, i) => `${i + 1}. ${m.text}`).join("\n")
-      session.append("user/message", { content: `[记忆] 关于用户/项目的既有事实：\n${list}` }, true)
-      console.log(`\x1b[35m[memory] 已召回 ${memories.length} 条记忆\x1b[0m`)
+      session.append("user/message", { content: `[memory] known facts about the user/project:\n${list}` }, true)
+      console.log(`\x1b[35m[memory] recalled ${memories.length} memories\x1b[0m`)
     }
     return next()
   })
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  循环（同 L3）
+//  Loop (same as L3)
 // ═══════════════════════════════════════════════════════════════
 async function step(ctx: Ctx, session: Session): Promise<boolean> {
   const messages: ChatCompletionMessageParam[] = await ctx.waterfall("agent/pre-step", { session }, async () => [
@@ -183,7 +183,7 @@ async function runTurn(ctx: Ctx, session: Session, userText: string) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  组装
+//  Assembly
 // ═══════════════════════════════════════════════════════════════
 const ctx = new Ctx()
 ctx.provide("tools", createToolRegistry())
@@ -193,8 +193,8 @@ memoryPlugin(ctx)
 const session = new Session()
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
 
-console.log("L7 · 跨 session 记忆")
-console.log(`记忆存于 ${MEMORY_FILE}。告诉它关于你的事实，退出后重跑即可召回。输入 q 退出。\n`)
+console.log("L7 · Cross-Session Memory")
+console.log(`Memories are stored in ${MEMORY_FILE}. Tell it facts about you, then rerun to recall. Type q to quit.\n`)
 
 while (true) {
   const q = await rl.question("\x1b[36mL7 >> \x1b[0m")

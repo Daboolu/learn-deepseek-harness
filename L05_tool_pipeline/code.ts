@@ -15,7 +15,7 @@ const MODEL = process.env.MODEL_ID ?? "deepseek-chat"
 const SYSTEM = `You are a coding agent working in ${process.cwd()}. Use tools to accomplish tasks. Act, don't over-explain.`
 
 // ═══════════════════════════════════════════════════════════════
-//  迷你框架（同前）
+//  Mini framework (same as before)
 // ═══════════════════════════════════════════════════════════════
 type NextFn = () => Promise<any>
 type Listener = (payload: any, next: NextFn) => Promise<any> | any
@@ -46,7 +46,7 @@ class Ctx {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  Session（同 L3）
+//  Session (same as L3)
 // ═══════════════════════════════════════════════════════════════
 type SurfaceType = "user/message" | "assistant/message" | "tool/result"
 interface SessionEvent {
@@ -66,7 +66,7 @@ class Session {
     return event
   }
   deriveMessages(): ChatCompletionMessageParam[] {
-    // seq 等于事件在 events 中的下标（events 只增，seq 与 push 同步自增），故可直接索引
+    // seq equals the event's index in events (events only grows, seq increments in lockstep with push), so index directly
     return this.surface.map((seq) => {
       const e = this.events[seq]
       switch (e.type) {
@@ -77,14 +77,14 @@ class Session {
         case "tool/result":
           return { role: "tool", tool_call_id: e.data.tool_call_id, content: e.data.content }
         default:
-          throw new Error(`非 surface 事件不应出现在 surface 列表中: ${e.type}`)
+          throw new Error(`a non-surface event should not appear in the surface list: ${e.type}`)
       }
     })
   }
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  ★ 本课主角：带分层管线的工具注册表
+//  ★ Star of this lesson: a tool registry with a layered pipeline
 // ═══════════════════════════════════════════════════════════════
 interface ToolExec {
   callId: string
@@ -95,7 +95,7 @@ interface ToolResult {
   content: string
   isError: boolean
 }
-// 允许 / 拒绝 / 询问用户
+// allow / deny / ask the user
 type PreToolDecision = { kind: "allow" } | { kind: "deny"; reason: string } | { kind: "ask"; reason: string }
 
 function createToolRegistry(ctx: Ctx) {
@@ -106,7 +106,7 @@ function createToolRegistry(ctx: Ctx) {
     register(name: string, schema: any, run: (args: any) => string) {
       tools[name] = { schema, run }
     },
-    // 单调 guard：一旦某个 guard 拒绝，后续环节无法翻转（不可绕过的硬规则）
+    // monotonic guard: once a guard denies, no later stage can reverse it (an unbypassable hard rule)
     guard(fn: (exec: ToolExec) => string | undefined) {
       guards.push(fn)
     },
@@ -118,40 +118,40 @@ function createToolRegistry(ctx: Ctx) {
     },
 
     async execute(exec: ToolExec): Promise<ToolResult> {
-      // 1) pre-execute 瀑布：插件给出 allow/deny/ask，默认 allow
+      // 1) pre-execute waterfall: plugins return allow/deny/ask, default allow
       let decision: PreToolDecision = await ctx.waterfall(
         "tools/pre-execute",
         { exec },
         async () => ({ kind: "allow" }),
       )
 
-      // 2) guard：单调否决，位于 pre-execute 之后，任何 ask 都无法翻转它
+      // 2) guard: monotonic denial, after pre-execute; no ask can reverse it
       for (const g of guards) {
         const reason = g(exec)
         if (reason) decision = { kind: "deny", reason }
       }
 
-      // 3) ask：交由确认服务询问用户；无确认服务时降级为拒绝
+      // 3) ask: defer to the confirm service to ask the user; degrade to deny when no confirm service exists
       if (decision.kind === "ask") {
         const confirm = ctx.services.confirm as undefined | ((e: ToolExec, r: string) => Promise<boolean>)
         const ok = confirm ? await confirm(exec, decision.reason) : false
-        decision = ok ? { kind: "allow" } : { kind: "deny", reason: "用户未批准" }
+        decision = ok ? { kind: "allow" } : { kind: "deny", reason: "not approved by user" }
       }
 
       if (decision.kind === "deny") {
-        return { content: `Error: 工具调用被拒绝 —— ${decision.reason}`, isError: true }
+        return { content: `Error: tool call denied — ${decision.reason}`, isError: true }
       }
 
-      // 4) 执行
+      // 4) execute
       const t = tools[exec.name]
       let result: ToolResult = t
         ? { content: t.run(exec.args), isError: false }
-        : { content: `Error: 未知工具 ${exec.name}`, isError: true }
+        : { content: `Error: unknown tool ${exec.name}`, isError: true }
 
-      // 5) post-execute 瀑布：插件可改写结果内容
+      // 5) post-execute waterfall: plugins may rewrite the result content
       result = await ctx.waterfall("tools/post-execute", { exec, result }, async () => result)
 
-      // 6) result 通知：仅供观察，不能改变结果
+      // 6) result notification: observe only, cannot change the result
       await ctx.emit("tools/result", { exec, result })
       return result
     },
@@ -159,13 +159,13 @@ function createToolRegistry(ctx: Ctx) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  工具插件
+//  Tool plugins
 // ═══════════════════════════════════════════════════════════════
 function bashPlugin(ctx: Ctx) {
   function runBash(command: string): string {
     try {
       const out = execSync(command, { encoding: "utf8", timeout: 120_000, stdio: ["ignore", "pipe", "pipe"] })
-      return out.trim().slice(0, 50_000) || "(无输出)"
+      return out.trim().slice(0, 50_000) || "(no output)"
     } catch (e: any) {
       const out = ((e.stdout ?? "") + (e.stderr ?? "")).trim()
       return out ? out.slice(0, 50_000) : `Error: ${e.message}`
@@ -199,16 +199,16 @@ function readFilePlugin(ctx: Ctx) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  ★ 权限插件：策略与硬规则分离
-//    · 硬规则用 guard：命中即拒绝，任何询问都无法翻转（如 rm -rf /）
-//    · 一般写/删操作用 pre-execute 返回 ask，交由用户确认
+//  ★ Permission plugin: separates policy from hard rules
+//    · hard rules use guard: denied on match, no ask can reverse it (e.g. rm -rf /)
+//    · ordinary write/delete operations use pre-execute to return ask, deferring to user confirmation
 // ═══════════════════════════════════════════════════════════════
 function permissionPlugin(ctx: Ctx) {
   const registry = ctx.services.tools
 
   registry.guard((exec: ToolExec) => {
     if (exec.name === "bash" && /rm\s+-rf\s+\/(?!\w)|shutdown|reboot|:\(\)\s*\{/.test(exec.args.command ?? "")) {
-      return "命中不可执行的危险模式"
+      return "matched an unexecutable dangerous pattern"
     }
     return undefined
   })
@@ -217,14 +217,14 @@ function permissionPlugin(ctx: Ctx) {
     if (exec.name === "bash") {
       const cmd: string = exec.args.command ?? ""
       const mutating = /\b(rm|mv|cp|chmod|chown|git\s+push|>|>>|tee|mkdir|touch|npm\s+i)/.test(cmd)
-      if (mutating) return { kind: "ask", reason: `即将执行可能修改系统的命令：${cmd}` }
+      if (mutating) return { kind: "ask", reason: `about to run a command that may modify the system: ${cmd}` }
     }
-    return { kind: "allow" } // read_file 及只读命令直接放行
+    return { kind: "allow" } // read_file and read-only commands pass through
   })
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  循环：先记录 tool/call(审计意图)，再执行管线，最后记录 tool/result
+//  Loop: record tool/call (audit intent) first, then run the pipeline, then record tool/result
 // ═══════════════════════════════════════════════════════════════
 async function step(ctx: Ctx, session: Session): Promise<boolean> {
   const messages: ChatCompletionMessageParam[] = await ctx.waterfall("agent/pre-step", { session }, async () => [
@@ -245,7 +245,7 @@ async function step(ctx: Ctx, session: Session): Promise<boolean> {
   for (const call of msg.tool_calls) {
     const args = JSON.parse(call.function.arguments)
     const exec: ToolExec = { callId: call.id, name: call.function.name, args }
-    // 先记录调用意图（log-only），再执行：崩溃时可判断某调用是否已发起
+    // record the call intent (log-only) before executing: on a crash we can tell whether a call was issued
     session.append("tool/call", { callId: exec.callId, name: exec.name, args })
     console.log(`\x1b[33m$ ${exec.name} ${JSON.stringify(args)}\x1b[0m`)
     const result = await ctx.services.tools.execute(exec)
@@ -263,7 +263,7 @@ async function runTurn(ctx: Ctx, session: Session, userText: string) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  组装
+//  Assembly
 // ═══════════════════════════════════════════════════════════════
 const ctx = new Ctx()
 ctx.provide("tools", createToolRegistry(ctx))
@@ -274,14 +274,14 @@ permissionPlugin(ctx)
 const session = new Session()
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
 
-// 确认服务：管线遇到 ask 时调用它询问用户。策略(问什么)在 permission 插件，机制(如何问)在这里
+// confirm service: the pipeline calls it on ask. Policy (what to ask) lives in the permission plugin; mechanism (how to ask) lives here
 ctx.provide("confirm", async (_exec: ToolExec, reason: string): Promise<boolean> => {
-  const a = await rl.question(`\x1b[31m[需要确认] ${reason}\n  允许执行? (y/N) \x1b[0m`)
+  const a = await rl.question(`\x1b[31m[confirmation needed] ${reason}\n  Allow? (y/N) \x1b[0m`)
   return a.trim().toLowerCase() === "y"
 })
 
-console.log("L5 · 工具管线 + 权限")
-console.log("只读命令直接执行；写/删类命令会要求确认。输入 q 退出。\n")
+console.log("L5 · Tool Pipeline + Permissions")
+console.log("Read-only commands run directly; write/delete commands ask for confirmation. Type q to quit.\n")
 
 while (true) {
   const q = await rl.question("\x1b[36mL5 >> \x1b[0m")
