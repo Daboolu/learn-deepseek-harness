@@ -45,6 +45,10 @@ Every lesson README has a fixed section: **"How the three pillars show up here"*
 
 ## Course map
 
+The course has two tracks: **Basics (L1–L8)** lays the foundation, and **Advanced (L9 onward)** stacks more powerful capabilities on top (and will keep growing). The repo mirrors this with `basics/` and `advanced/` directories.
+
+### Basics (`basics/`)
+
 | # | Lesson | Main pillar | What you'll learn |
 |---|--------|-------------|-------------------|
 | **L1** | The bare loop | (groundwork) | the essence of an agent: user→LLM→tool→loop; and **deliberately leaves three limitations** for the pillars to solve |
@@ -55,6 +59,11 @@ Every lesson README has a fixed section: **"How the three pillars show up here"*
 | **L6** | Context compaction | **P1+P2+P3** | the crown lesson: compaction = plugin + replace event + cache cliff |
 | **L7** | Cross-session memory | P2+P3 | memory plugin: recall + write |
 | **L8** | Assemble a small harness | all three | compose all plugins into a complete whole |
+
+### Advanced (`advanced/`)
+
+| # | Lesson | Main pillar | What you'll learn |
+|---|--------|-------------|-------------------|
 | **L9** | Subagent | P1 | spawn a subagent as a tool |
 | **L10** | Self-modification | **P1 ultimate** | mount a plugin at runtime (the ultimate form of everything-is-a-plugin) |
 
@@ -64,10 +73,10 @@ Read in order. Each lesson's `README` follows: problem → core code → how it 
 
 ## How to run
 
-Each lesson is a standalone package:
+Each lesson is a standalone package (under `basics/` or `advanced/`):
 
 ```bash
-cd L01_agent_loop
+cd basics/L01_agent_loop
 cp .env.example .env      # fill in your DEEPSEEK_API_KEY
 npm install
 npm run dev

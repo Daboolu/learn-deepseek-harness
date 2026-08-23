@@ -45,6 +45,10 @@ DeepSeek Harness 之所以是它，就靠这三件事。整门课都在反复强
 
 ## 课程地图
 
+课程分两大轨道：**基础篇 Basics（L1–L8）** 打地基，**进阶篇 Advanced（L9 起）** 在地基上叠更强的能力（会陆续扩充）。仓库里也按 `basics/`、`advanced/` 两个目录组织。
+
+### 基础篇 Basics（`basics/`）
+
 | # | 课程 | 主打支柱 | 你会学到 |
 |---|------|---------|---------|
 | **L1** | 最裸的循环 | (铺垫) | agent 的本质：user→LLM→tool→loop；并**故意留下三根支柱要解决的三处局限** |
@@ -55,6 +59,11 @@ DeepSeek Harness 之所以是它，就靠这三件事。整门课都在反复强
 | **L6** | 上下文压缩 | **P1+P2+P3** | 皇冠课：压缩=插件+replace事件+缓存悬崖 |
 | **L7** | 跨 session 记忆 | P2+P3 | memory 插件：召回 + 写入 |
 | **L8** | 组装成小 harness | 三支柱合体 | 把所有插件拼成一个完整体 |
+
+### 进阶篇 Advanced（`advanced/`）
+
+| # | 课程 | 主打支柱 | 你会学到 |
+|---|------|---------|---------|
 | **L9** | 子 agent | P1 | 派生子 agent 当工具 |
 | **L10** | 自我修改 | **P1 极致** | 运行时挂插件（一切皆插件的终极形态） |
 
@@ -64,10 +73,10 @@ DeepSeek Harness 之所以是它，就靠这三件事。整门课都在反复强
 
 ## 怎么跑
 
-每一课都是独立的包：
+每一课都是独立的包（在 `basics/` 或 `advanced/` 下）：
 
 ```bash
-cd L01_agent_loop
+cd basics/L01_agent_loop
 cp .env.example .env      # 填入你的 DEEPSEEK_API_KEY
 npm install
 npm run dev

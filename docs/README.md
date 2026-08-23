@@ -2,7 +2,7 @@
 
 `learn-deepseek-harness` 的静态课程网站，托管于 GitHub Pages。功能：
 
-- **目录**：L1–L10，读 README + 代码。
+- **目录**：分「基础篇 Basics（L1–L8）」「进阶篇 Advanced（L9–L10）」两组，读 README + 代码。
 - **代码对比 (Diff)**：任选两课对比 `code.ts`，绿条=新增、红条=删除。
 - 代码页提供「复制本地运行命令」（不在浏览器执行——课程代码依赖 Node 的 bash/fs/readline，且 API key 不宜放静态页）。
 

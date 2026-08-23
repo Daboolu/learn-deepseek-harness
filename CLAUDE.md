@@ -35,7 +35,8 @@
 
 ## 3. 课程约定
 
-- **每课 = 一个独立可运行的 TS 包**：`LNN_名字/` 下含 `package.json` / `tsconfig.json` / `.env.example` / `code.ts` / `README.md`。进去 `npm install && npm run dev` 就能跑。
+- **课程分两大轨道**：**基础篇 Basics = L1–L8，进阶篇 Advanced = L9 起**（Advanced 后续扩充）。仓库按 `basics/`、`advanced/` 两个目录组织，课程目录放在其下。
+- **每课 = 一个独立可运行的 TS 包**：`basics/LNN_名字/` 或 `advanced/LNN_名字/` 下含 `package.json` / `tsconfig.json` / `.env.example` / `code.ts` / `README.md`。进去 `npm install && npm run dev` 就能跑。
 - **迷你框架 copy-forward 内联进每课**（不抽公共库），用 `═══` 注释块划出「和上一课一样」与「本课新增」。每课自包含、能单独拷出去跑。
 - **代码**：`code.ts` 全英文注释与英文字面量（单一一份，不做双语代码）；TS 小白友好；能省的类型体操都省（见 B 档）。
 - **行文正式、简洁**：不用口语化表达（"到点喊人""喊一嗓子""举手""焊死""插座板""购物清单"…）和比喻（"治病/病根"）。用直接的技术词：事件说「触发/广播/监听/注册」，ctx 说「共享上下文」，disposer 说「注销函数」。L1 刻意保留的不足统一叫「局限 ❶❷❸」，后续「解决/改进」它们。
@@ -53,7 +54,7 @@
 - **运行**：`npm run dev`（= `tsx code.ts`，直接跑 .ts，无需编译）。
 - **类型检查**：`npx tsc --noEmit`（**不带文件名**，让它读 tsconfig；`tsc code.ts` 会忽略 tsconfig 用错默认值）。每课交付前必须 **0 报错**。
 - **KV 缓存观测**：DeepSeek 在 `usage` 里返回 `prompt_cache_hit_tokens` / `prompt_cache_miss_tokens`（openai 标准类型里没有，用 `as any` 取）。
-- **课程网站**：`docs/` 是托管到 GitHub Pages 的纯静态站点（目录 + README + 代码 + Diff）。**改动任何一课的 README/code.ts 后，必须重跑 `node docs/build.mjs` 重新生成并提交 `docs/lessons.json`**（Pages 不跑构建，内容需预先嵌入）。每课 README 顶部有「相比上一课」changelog，需随内容同步。
+- **课程网站**：`docs/` 是托管到 GitHub Pages 的纯静态站点（目录 + README + 代码 + Diff），`build.mjs` 按 `basics/`+`advanced/` 分组扫描，侧栏据此分「基础篇/进阶篇」两组。**改动任何一课的 README/code.ts 后，必须重跑 `node docs/build.mjs` 重新生成并提交 `docs/lessons.json`**（Pages 不跑构建，内容需预先嵌入）。每课 README 顶部有「相比上一课」changelog，需随内容同步。
 - **双语**：每课与根都有中英两版（`README.md` + `README.en.md`），网站语言切换读 `readme_en`（缺失回落 TODO 占位）。改中文内容时要同步英文版并重跑 build.mjs。代码 `code.ts` 单一一份、全英文注释与字面量。
 
 ## 5. 迷你框架 → 真实 DeepSeek Harness 映射
@@ -72,6 +73,8 @@
 
 全部 10 课已完成并 typecheck 通过。
 
+**基础篇 Basics（`basics/`）**
+
 - [x] **L1** 最裸的循环（铺垫；故意留下三处局限 ❶耦合 ❷可变数组 ❸每步重发）
 - [x] **L2** 一切皆插件（**P1**：迷你框架 + bash/log 插件）
 - [x] **L3** Session Log 唯一真相（**P2**：事件日志 + surface + `/log` `/surface`）
@@ -80,6 +83,9 @@
 - [x] **L6** 上下文压缩（三支柱合体：插件 + surface replace + 摘要前缀复用）
 - [x] **L7** 跨 session 记忆（remember 工具 + 会话开始召回）
 - [x] **L8** 组装成小 harness（六插件组合）
+
+**进阶篇 Advanced（`advanced/`，后续扩充）**
+
 - [x] **L9** 子 agent（`spawn_subagent`：独立 Session + 受限工具集 + 只回传结论）
 - [x] **L10** 自我修改（`define_tool`：运行时挂载新工具）
 

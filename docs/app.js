@@ -5,6 +5,7 @@ const I18N = {
   zh: {
     brandSub: "一切皆插件 · Session Log · KV Cache",
     lessons: "课程", tools: "工具", diff: "代码对比 (Diff)", repo: "GitHub 仓库 ↗",
+    secBasics: "基础篇", secAdvanced: "进阶篇",
     tabReadme: "README", tabCode: "code.ts",
     old: "旧：", new: "新：", added: "新增", removed: "删除",
     copy: "复制运行命令", copied: "已复制 ✓", codeHint: "本课代码。本地运行：",
@@ -17,6 +18,7 @@ const I18N = {
   en: {
     brandSub: "Everything is a plugin · Session Log · KV Cache",
     lessons: "Lessons", tools: "Tools", diff: "Code Diff", repo: "GitHub Repo ↗",
+    secBasics: "Basics", secAdvanced: "Advanced",
     tabReadme: "README", tabCode: "code.ts",
     old: "Old: ", new: "New: ", added: "Added", removed: "Removed",
     copy: "Copy run command", copied: "Copied ✓", codeHint: "Lesson code. Run locally: ",
@@ -96,7 +98,6 @@ function route() {
 // 侧栏与固定 UI 文案（随语言/主题刷新）
 function renderChrome() {
   document.getElementById("brand-sub").textContent = t("brandSub")
-  document.getElementById("sec-lessons").textContent = t("lessons")
   document.getElementById("sec-tools").textContent = t("tools")
   const diffNav = document.getElementById("nav-diff")
   diffNav.textContent = t("diff")
@@ -105,9 +106,22 @@ function renderChrome() {
   document.getElementById("lang-btn").textContent = t("langBtn")
   document.getElementById("theme-btn").textContent = state.theme === "dark" ? "☀️" : "🌙"
 
-  const ul = document.getElementById("lesson-list")
-  ul.innerHTML = ""
+  // 侧栏课程按 section（basics/advanced）分组：每组一个标题 + 一个课程列表
+  const nav = document.getElementById("lesson-nav")
+  nav.innerHTML = ""
+  const secLabel = { basics: t("secBasics"), advanced: t("secAdvanced") }
+  let lastSection = null
+  let ul = null
   state.lessons.forEach((l, i) => {
+    if (l.section !== lastSection) {
+      lastSection = l.section
+      const head = document.createElement("div")
+      head.className = "nav-section"
+      head.textContent = secLabel[l.section] || l.section
+      nav.appendChild(head)
+      ul = document.createElement("ul")
+      nav.appendChild(ul)
+    }
     const a = document.createElement("a")
     a.href = `#L${l.num}`
     a.textContent = t("lessonLabel", l)
