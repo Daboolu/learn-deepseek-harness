@@ -91,7 +91,7 @@ logPlugin(ctx)   // pure observer, only listens to tools/result
 ## Try it
 
 ```bash
-cp .env.example .env      # fill in DEEPSEEK_API_KEY
+# Create a local .env file (ignored by Git)
 npm install
 npm run dev
 ```

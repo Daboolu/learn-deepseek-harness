@@ -77,12 +77,26 @@ DeepSeek Harness 之所以是它，就靠这三件事。整门课都在反复强
 
 ```bash
 cd basics/L01_agent_loop
-cp .env.example .env      # 填入你的 DEEPSEEK_API_KEY
+# 在本地创建 .env 并填入 DEEPSEEK_API_KEY（所有 .env* 文件均不被 Git 追踪）
 npm install
 npm run dev
 ```
 
 需要一个 DeepSeek API key（[platform.deepseek.com](https://platform.deepseek.com)）。DeepSeek 的 API 与 OpenAI 兼容，所以我们用 `openai` 这个 SDK 指向 DeepSeek 的地址。
+
+### 本地 Qwen / SGLang 服务
+
+本分支增加了一个客户端兼容层。OpenAI-compatible 服务若把 Qwen 工具调用留在 `<tool_call>` 文本中，而没有填充标准 `tool_calls` 字段，兼容层会在 API 边界将其转换为标准结构；服务端已经返回标准结构时则原样保留。
+
+例如：
+
+```dotenv
+DEEPSEEK_API_KEY=dummy
+DEEPSEEK_BASE_URL=http://10.86.84.160:8002/v1
+MODEL_ID=qwen3.5-35b-a3b
+```
+
+每课都内含独立的 `tool-call-adapter.ts`，因此仍然可以单独复制和运行。服务端原生 tool-call parser 依然更可靠；本地兼容层是无法调整服务端时的回退方案。
 
 ---
 

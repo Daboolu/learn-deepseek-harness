@@ -36,7 +36,7 @@
 ## 3. 课程约定
 
 - **课程分两大轨道**：**基础篇 Basics = L1–L8，进阶篇 Advanced = L9 起**（Advanced 后续扩充）。仓库按 `basics/`、`advanced/` 两个目录组织，课程目录放在其下。
-- **每课 = 一个独立可运行的 TS 包**：`basics/LNN_名字/` 或 `advanced/LNN_名字/` 下含 `package.json` / `tsconfig.json` / `.env.example` / `code.ts` / `README.md`。进去 `npm install && npm run dev` 就能跑。
+- **每课 = 一个独立可运行的 TS 包**：`basics/LNN_名字/` 或 `advanced/LNN_名字/` 下含 `package.json` / `tsconfig.json` / `code.ts` / `README.md`。进去 `npm install && npm run dev` 就能跑。
 - **迷你框架 copy-forward 内联进每课**（不抽公共库），用 `═══` 注释块划出「和上一课一样」与「本课新增」。每课自包含、能单独拷出去跑。
 - **代码**：`code.ts` 全英文注释与英文字面量（单一一份，不做双语代码）；TS 小白友好；能省的类型体操都省（见 B 档）。
 - **行文正式、简洁**：不用口语化表达（"到点喊人""喊一嗓子""举手""焊死""插座板""购物清单"…）和比喻（"治病/病根"）。用直接的技术词：事件说「触发/广播/监听/注册」，ctx 说「共享上下文」，disposer 说「注销函数」。L1 刻意保留的不足统一叫「局限 ❶❷❸」，后续「解决/改进」它们。

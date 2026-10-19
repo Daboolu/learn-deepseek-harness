@@ -63,8 +63,7 @@ function memoryPlugin(ctx) {
 ## Try it
 
 ```bash
-cp .env.example .env
-npm install
+# Create a local .env file (ignored by Git)npm install
 npm run dev
 ```
 

@@ -4,6 +4,7 @@ import OpenAI from "openai"
 import type { ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/chat/completions"
 import { execSync } from "node:child_process"
 import * as readline from "node:readline/promises"
+import { adaptToolCalls } from "./tool-call-adapter.js"
 import "dotenv/config"
 
 const client = new OpenAI({
@@ -191,7 +192,7 @@ async function step(ctx: Ctx, session: Session): Promise<boolean> {
   const pct = total ? Math.round((hit / total) * 100) : 0
   console.log(`\x1b[35m[KV] input ${total} tokens: hit ${hit} (${pct}%) / miss ${miss}  [inject mode: ${injectMode}]\x1b[0m`)
 
-  const msg = res.choices[0].message
+  const msg = adaptToolCalls(res.choices[0].message)
   session.append("assistant/message", { message: msg }, true)
   if (!msg.tool_calls?.length) return false
 

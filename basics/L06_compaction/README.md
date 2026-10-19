@@ -69,8 +69,7 @@ const messages = [{ role: "system", content: SYSTEM }, ...rangeMsgs, { role: "us
 ## 试一下
 
 ```bash
-cp .env.example .env
-npm install
+# 在本地创建 .env 文件（Git 不追踪）npm install
 npm run dev
 ```
 

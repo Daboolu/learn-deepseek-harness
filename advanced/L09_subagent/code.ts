@@ -4,6 +4,7 @@ import OpenAI from "openai"
 import type { ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/chat/completions"
 import { execSync } from "node:child_process"
 import * as readline from "node:readline/promises"
+import { adaptToolCalls } from "./tool-call-adapter.js"
 import "dotenv/config"
 
 const client = new OpenAI({
@@ -133,7 +134,7 @@ async function runSubagent(ctx: Ctx, task: string): Promise<string> {
   for (let guard = 0; guard < 20; guard++) {
     const messages: ChatCompletionMessageParam[] = [{ role: "system", content: CHILD_SYSTEM }, ...child.deriveMessages()]
     const res = await client.chat.completions.create({ model: MODEL, messages, tools: childTools, max_tokens: 2000 })
-    const msg = res.choices[0].message
+    const msg = adaptToolCalls(res.choices[0].message)
     child.append("assistant/message", { message: msg }, true)
     if (!msg.tool_calls?.length) return typeof msg.content === "string" ? msg.content : "(subagent produced no output)"
     for (const call of msg.tool_calls) {
@@ -169,7 +170,7 @@ async function step(ctx: Ctx, session: Session): Promise<boolean> {
     ...session.deriveMessages(),
   ])
   const res = await client.chat.completions.create({ model: MODEL, messages, tools: ctx.services.tools.schemas(), max_tokens: 4000 })
-  const msg = res.choices[0].message
+  const msg = adaptToolCalls(res.choices[0].message)
   session.append("assistant/message", { message: msg }, true)
   if (!msg.tool_calls?.length) return false
   for (const call of msg.tool_calls) {

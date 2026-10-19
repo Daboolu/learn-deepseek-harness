@@ -173,7 +173,7 @@ function renderCode(main, lesson) {
   hint.textContent = t("codeHint")
   const btn = document.createElement("button")
   btn.className = "copybtn"
-  const cmd = `cd ${lesson.dir} && cp .env.example .env && npm install && npm run dev`
+  const cmd = `cd ${lesson.dir} && touch .env && npm install && npm run dev`
   btn.textContent = t("copy")
   btn.onclick = () => {
     navigator.clipboard?.writeText(cmd)

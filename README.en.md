@@ -77,12 +77,26 @@ Each lesson is a standalone package (under `basics/` or `advanced/`):
 
 ```bash
 cd basics/L01_agent_loop
-cp .env.example .env      # fill in your DEEPSEEK_API_KEY
+# Create a local .env with DEEPSEEK_API_KEY (all .env* files are ignored by Git)
 npm install
 npm run dev
 ```
 
 You need a DeepSeek API key ([platform.deepseek.com](https://platform.deepseek.com)). DeepSeek's API is OpenAI-compatible, so we use the `openai` SDK pointed at DeepSeek's endpoint.
+
+### Local Qwen / SGLang servers
+
+This branch adds a client-side compatibility adapter. If an OpenAI-compatible server leaves Qwen tool calls in `<tool_call>` text instead of populating the standard `tool_calls` field, the adapter normalizes them at the API boundary. Standard server-provided tool calls pass through unchanged.
+
+For example:
+
+```dotenv
+DEEPSEEK_API_KEY=dummy
+DEEPSEEK_BASE_URL=http://10.86.84.160:8002/v1
+MODEL_ID=qwen3.5-35b-a3b
+```
+
+Each lesson contains its own `tool-call-adapter.ts`, so it remains independently copyable and runnable. A native server-side tool-call parser is still more reliable; the local adapter is a fallback when the server cannot be changed.
 
 ---
 

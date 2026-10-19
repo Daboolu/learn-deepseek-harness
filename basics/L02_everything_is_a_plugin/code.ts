@@ -4,6 +4,7 @@ import OpenAI from "openai"
 import type { ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/chat/completions"
 import { execSync } from "node:child_process"
 import * as readline from "node:readline/promises"
+import { adaptToolCalls } from "./tool-call-adapter.js"
 import "dotenv/config"
 
 const client = new OpenAI({
@@ -130,7 +131,7 @@ async function step(ctx: Ctx, history: ChatCompletionMessageParam[]): Promise<bo
     tools: ctx.services.tools.schemas(),
     max_tokens: 4000,
   })
-  const msg = res.choices[0].message
+  const msg = adaptToolCalls(res.choices[0].message)
   history.push(msg)
   if (!msg.tool_calls?.length) return false
 

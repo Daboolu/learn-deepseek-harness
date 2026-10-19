@@ -70,8 +70,7 @@ session.append("tool/result", { tool_call_id, content: result.content }, true)
 ## Try it
 
 ```bash
-cp .env.example .env
-npm install
+# Create a local .env file (ignored by Git)npm install
 npm run dev
 ```
 

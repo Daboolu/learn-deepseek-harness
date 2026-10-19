@@ -89,7 +89,7 @@ The loop no longer does `history.push(...)`; it calls `session.append(...)`, and
 ## Try it
 
 ```bash
-cp .env.example .env      # fill in DEEPSEEK_API_KEY
+# Create a local .env file (ignored by Git)
 npm install
 npm run dev
 ```

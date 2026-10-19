@@ -63,7 +63,7 @@ console.log(`[KV] 输入 ${total} tokens：命中 ${hit} / 未命中 ${miss}`)
 ## 试一下
 
 ```bash
-cp .env.example .env      # 填入 DEEPSEEK_API_KEY
+# 在本地创建 .env 文件（Git 不追踪）
 npm install
 npm run dev
 ```

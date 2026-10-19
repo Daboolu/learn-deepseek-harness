@@ -89,7 +89,7 @@ class Session {
 ## 试一下
 
 ```bash
-cp .env.example .env      # 填入 DEEPSEEK_API_KEY
+# 在本地创建 .env 文件（Git 不追踪）
 npm install
 npm run dev
 ```
