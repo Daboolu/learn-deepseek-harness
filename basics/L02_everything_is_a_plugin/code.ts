@@ -113,8 +113,9 @@ function bashPlugin(ctx: Ctx) {
 //  It changes neither the loop nor bash, proving that adding a capability needs no change to the core.
 // ═══════════════════════════════════════════════════════════════
 function logPlugin(ctx: Ctx) {
-  ctx.on("tools/result", ({ exec }) => {
-    console.log(`\x1b[90m  [log] tool "${exec.name}" finished\x1b[0m`)
+  ctx.on("tools/result", ({ exec, result }) => {
+    console.log(`[log] tool "${exec.name}" finished`)
+    console.log(`[log] result: ${result.content}`)
   })
 }
 

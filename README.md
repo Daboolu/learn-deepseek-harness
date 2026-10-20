@@ -102,6 +102,8 @@ MODEL_ID=qwen3.5-35b-a3b
 
 ## 给 TypeScript 小白的一句话（关于类型）
 
+如果你对箭头函数、对象解构、`...`、`async/await`、`type` 或 `interface` 不熟，先阅读 [`docs/typescript-reading-guide.md`](docs/typescript-reading-guide.md)。它只讲阅读本教程需要的语法。
+
 这门课追求**极简**。类型策略是「够用就好」：
 
 - **外围该补的都补**——消息、工具、函数签名都用真实类型，让你在编辑器里有自动补全、写错立刻标红。

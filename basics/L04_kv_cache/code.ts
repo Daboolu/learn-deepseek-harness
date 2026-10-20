@@ -175,7 +175,16 @@ async function step(ctx: Ctx, session: Session): Promise<boolean> {
     { role: "system", content: SYSTEM },
     ...session.deriveMessages(),
   ])
-
+  console.log(
+  messages.map((message, index) => ({
+    index,
+    role: message.role,
+    content:
+      typeof message.content === "string"
+        ? message.content.slice(0, 80)
+        : "[non-text]",
+  })),
+  )
   const res = await client.chat.completions.create({
     model: MODEL,
     messages,
