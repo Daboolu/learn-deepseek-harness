@@ -69,6 +69,8 @@ DeepSeek Harness 之所以是它，就靠这三件事。整门课都在反复强
 
 建议按顺序读。每课的 `README.md` 里有「问题 → 核心代码 → 工作原理 → 三根支柱体现 → 试一下 → 接下来埋了什么坑」。
 
+学习过程中的问题与结论整理在 [`docs/basic-notes.md`](docs/basic-notes.md)。
+
 ---
 
 ## 怎么跑
