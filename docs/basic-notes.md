@@ -186,6 +186,69 @@ listener A → listener B → listener C → base
 
 每个 listener 接收相同的 payload，并通过 `next()` 进入下游；返回值再从内向外传回，所以可以被逐层修改。
 
+### `waterfall()` 中的 payload 在哪里？
+
+payload 就是调用 `waterfall()` 时传入的第二个参数：
+
+```ts
+ctx.waterfall(
+  "agent/pre-step", // event
+  { session },      // payload
+  async () => [     // base
+    { role: "system", content: SYSTEM },
+    ...session.deriveMessages(),
+  ],
+)
+```
+
+三个参数的对应关系：
+
+```text
+event   = "agent/pre-step"
+payload = { session }
+base    = 没有更多 listener 时执行的默认函数
+```
+
+`waterfall()` 内部把它传给 listener：
+
+```ts
+chain[i++](payload, next)
+```
+
+所以实际调用相当于：
+
+```ts
+listener({ session }, next)
+```
+
+listener 中常见的写法：
+
+```ts
+async ({ session }, next) => {
+  return next()
+}
+```
+
+使用了对象解构，等价于：
+
+```ts
+async (payload, next) => {
+  const session = payload.session
+  return next()
+}
+```
+
+完整传递路径：
+
+```text
+step() 创建 { session }
+→ waterfall(event, payload, base)
+→ listener(payload, next)
+→ listener 读取 payload.session
+```
+
+如果该 event 没有注册任何 listener，`chain` 是空数组，第一次调用 `next()` 就会直接执行 `base()`。保留这个空扩展点仍有价值：以后增加插件时无需修改 `step()`。
+
 ### `next()` 在哪里实现？
 
 它由 `Ctx.waterfall()` 创建：
@@ -506,20 +569,146 @@ listener 本身负责判断：
 
 但插件不能凭空感知主流程没有暴露的阶段。如果需要全新的生命周期阶段，仍需先在主流程增加相应扩展点。
 
-## Basics 完成后的自测
+## Basics 完成后的自测与答案
 
-如果能回答下面问题，就已经掌握 L01–L08 的主线：
+### 1. LLM 请求工具与本地程序执行工具有什么区别？
 
-1. LLM 请求工具与本地程序执行工具有什么区别？
-2. `schema` 给谁看，`run` 给谁执行？
-3. `event`、`listener`、`payload` 分别是什么？
-4. `emit` 和 `waterfall` 有什么区别？
-5. `next()` 在哪里创建，不调用它会怎样？
-6. `events`、`surface`、`messages` 的关系是什么？
-7. 为什么动态上下文放在末尾更利于 KV Cache？
-8. `t.run(exec.args)` 中的 `run` 从哪里来？
-9. 压缩为什么不等于删除历史？
-10. Memory 为什么能跨进程，而 Session Log 在本教程中不能？
-11. 为什么说 L08 是组装，而不是新能力？
-12. “一切皆插件”有什么边界？
+LLM **只提出请求**，Harness **负责真正执行**。
 
+```text
+LLM 返回 tool_calls（工具名 + 参数）
+→ Harness 解析参数
+→ 在注册表中找到 run 函数
+→ 本地执行
+→ 将结果作为 tool message 再发给 LLM
+```
+
+模型本身不能直接运行 Shell 或读取本地文件。
+
+### 2. `schema` 给谁看，`run` 给谁执行？
+
+`schema` 是给 LLM 看的“使用说明书”；`run` 是给本地 Harness 调用的执行函数。
+
+```text
+schema → 告诉模型工具叫什么、用途是什么、参数怎么写
+run    → 模型选中工具后，由本地程序真正执行
+```
+
+### 3. `event`、`listener`、`payload` 分别是什么？
+
+- `event`：事件名称，也是查找 listener 的 key，例如 `"tools/result"`。
+- `listener`：预先通过 `ctx.on()` 注册的函数。
+- `payload`：事件发生时传给 listener 的数据，例如 `{ exec, result }`。
+
+```ts
+ctx.on("tools/result", listener)      // 先登记 listener
+ctx.emit("tools/result", payload)    // 后触发并传入 payload
+```
+
+### 4. `emit` 和 `waterfall` 有什么区别？
+
+两者都会执行 listener，但主流程对返回值的处理不同：
+
+```text
+emit      = 通知“事情已经发生”；忽略 listener 返回值
+waterfall = 邀请插件参与加工；最终使用 listener 返回值
+```
+
+- 日志、指标、审计通常使用 `emit`。
+- 修改 messages、权限 decision 或工具结果通常使用 `waterfall`。
+
+### 5. `next()` 在哪里创建，不调用它会怎样？
+
+`next()` 由 `Ctx.waterfall()` 创建，并作为第二个参数传给 listener：
+
+```ts
+listener(payload, next)
+```
+
+listener 调用 `next()`，才会进入下一个 listener；全部 listener 执行完后才进入 `base()`。如果不调用，处理链就在当前插件停止。
+
+### 6. `events`、`surface`、`messages` 的关系是什么？
+
+三者是“事实 → 视图 → API 输入”的关系：
+
+```text
+events   完整事件账本
+  ↓ surface 选择 seq
+surface  模型可见事件的索引
+  ↓ deriveMessages()
+messages 最终发送给 LLM 的结构化消息
+```
+
+### 7. 为什么动态上下文放在末尾更利于 KV Cache？
+
+因为 KV Cache 按 token 前缀复用：
+
+```text
+append：  稳定旧内容 | 动态新内容   → 旧前缀仍可复用
+prepend： 动态新内容 | 稳定旧内容   → 从前面开始已经不同
+```
+
+所以动态内容越靠后，对已有缓存的破坏越小。
+
+### 8. `t.run(exec.args)` 中的 `run` 从哪里来？
+
+`run` 不是语言自带方法。工具插件注册时，把第三个函数参数保存在对象中：
+
+```ts
+register(name, schema, run) {
+  tools[name] = { schema, run }
+}
+```
+
+以后 `t = tools[exec.name]`，所以 `t.run(exec.args)` 就是在执行当初注册的函数。
+
+### 9. 压缩为什么不等于删除历史？
+
+因为它只改模型视图，不改事实账本：
+
+```text
+events：旧消息继续保留
+surface：旧 seq 被摘要 seq 替换
+```
+
+旧事件仍能审计或重放，只是不再由 `deriveMessages()` 放进后续 LLM 请求。
+
+### 10. Memory 为什么能跨进程，而 Session Log 在本教程中不能？
+
+区别是有没有持久化到磁盘：
+
+```text
+Memory      → writeFileSync() → agent-memory.json → 重启后可读取
+Session Log → 只存在内存数组                     → 进程退出后消失
+```
+
+### 11. 为什么说 L08 是组装，而不是新能力？
+
+因为它主要把前几课已有能力安装到同一个 `ctx`：
+
+```text
+bash + read_file + 权限 + 时间上下文 + Memory + 压缩
+```
+
+Agent Loop 仍是“准备 messages → 调用 LLM → 执行工具 → 写入 Session”，没有新增一套核心机制。
+
+### 12. “一切皆插件”有什么边界？
+
+插件不是自动监控整个程序，它只能在核心主动触发的地方运行。
+
+```text
+插件侧：ctx.on("agent/post-step", listener)    注册
+核心侧：ctx.emit("agent/post-step", payload)  触发
+```
+
+只有 `on()` 而没有对应的 `emit()` 或 `waterfall()`，listener 永远不会执行。
+
+例如要在“LLM 响应刚返回后”运行评分插件，但核心没有这个事件，就必须先在响应位置增加：
+
+```ts
+await ctx.emit("agent/post-step", { message })
+```
+
+这行就是新增扩展点。以后日志、评分、指标插件都能通过 `ctx.on("agent/post-step", ...)` 接入，而无需再次修改主流程。
+
+运行顺序通常是：程序启动时先用 `on()` 注册 listener，主流程运行到扩展点时再用 `emit()` 或 `waterfall()` 触发。没有 listener 时，`waterfall()` 仍可直接执行 `base()`。
